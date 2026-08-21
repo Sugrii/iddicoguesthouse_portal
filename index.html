@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Eddico Guest House Management - Advanced Cloud Edition</title>
-  <link rel="icon" href="economy.png">
+  <title>Edico Guest House Management - Advanced Cloud Edition</title>
   
   <!-- Firebase v9 Compat SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -454,8 +453,11 @@
         </div>
       </div>
       <button class="btn btn-accent" style="width:100%; margin-top:0.5rem;" onclick="handleLogin()"><i class="fa-solid fa-arrow-right-to-bracket"></i> Login</button>
-      <p style="font-size:0.85rem; text-align:center; margin-top:1rem;">
-        Need an account? <a href="#" style="color:var(--accent); font-weight:bold;" onclick="toggleAuthMode(true)">Register Here</a>
+      <p style="font-size:0.85rem; text-align:center; margin-top:0.8rem;">
+        <a href="#" style="color:var(--text-muted);" onclick="showAuthBox('forgotBox')"><i class="fa-solid fa-key"></i> Forgot Password?</a>
+      </p>
+      <p style="font-size:0.85rem; text-align:center; margin-top:0.5rem;">
+        Need an account? <a href="#" style="color:var(--accent); font-weight:bold;" onclick="showAuthBox('registerBox')">Register Here</a>
       </p>
     </div>
 
@@ -480,7 +482,28 @@
       </div>
       <button class="btn btn-success" style="width:100%; margin-top:0.5rem;" onclick="handleRegister()"><i class="fa-solid fa-user-check"></i> Register Account</button>
       <p style="font-size:0.85rem; text-align:center; margin-top:1rem;">
-        Already registered? <a href="#" style="color:var(--accent); font-weight:bold;" onclick="toggleAuthMode(false)">Login Here</a>
+        Already registered? <a href="#" style="color:var(--accent); font-weight:bold;" onclick="showAuthBox('loginBox')">Login Here</a>
+      </p>
+    </div>
+
+    <div class="auth-card hidden" id="forgotBox">
+      <h2 style="margin-bottom: 0.5rem;"><i class="fa-solid fa-unlock-keyhole text-accent"></i> Password Reset</h2>
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.2rem;">Recover or reset your account password.</p>
+      
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="forgotUsername" placeholder="Enter your username" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <div class="input-pin-wrapper">
+          <input type="password" id="forgotNewPassword" placeholder="Enter new password" autocomplete="off" />
+          <button type="button" class="toggle-pin-btn" onclick="togglePinVisibility('forgotNewPassword', this)"><i class="fa-solid fa-eye"></i></button>
+        </div>
+      </div>
+      <button class="btn btn-accent" style="width:100%; margin-top:0.5rem;" onclick="handleResetPassword()"><i class="fa-solid fa-rotate-right"></i> Reset Password</button>
+      <p style="font-size:0.85rem; text-align:center; margin-top:1rem;">
+        Remembered password? <a href="#" style="color:var(--accent); font-weight:bold;" onclick="showAuthBox('loginBox')">Login Here</a>
       </p>
     </div>
   </div>
@@ -1276,6 +1299,41 @@
       });
     };
 
+    // --- AUTH UI NAVIGATION HELPER ---
+    function showAuthBox(boxId) {
+      document.getElementById('loginBox').classList.add('hidden');
+      document.getElementById('registerBox').classList.add('hidden');
+      document.getElementById('forgotBox').classList.add('hidden');
+      document.getElementById(boxId).classList.remove('hidden');
+    }
+
+    function toggleAuthMode(showRegister) {
+      showAuthBox(showRegister ? 'registerBox' : 'loginBox');
+    }
+
+    function handleResetPassword() {
+      const username = document.getElementById('forgotUsername').value.trim().toLowerCase();
+      const newPassword = document.getElementById('forgotNewPassword').value.trim();
+
+      if (!username || !newPassword) return showPopupModal("Reset Error", "Please fill in all fields.", null);
+
+      if (registeredUsers[username]) {
+        registeredUsers[username].password = newPassword;
+        localStorage.setItem('edico_registered_users', JSON.stringify(registeredUsers));
+
+        if (db && syncKey !== 'OFFLINE-LOCAL') {
+          db.ref(`properties/${syncKey}/users/${username}/password`).set(newPassword);
+        }
+
+        document.getElementById('forgotUsername').value = '';
+        document.getElementById('forgotNewPassword').value = '';
+        showAuthBox('loginBox');
+        showPopupModal("Success", "Password reset successfully. You can now login with your new password.", null);
+      } else {
+        showPopupModal("Reset Error", "Username not found in registered accounts.", null);
+      }
+    }
+
     // --- BACKUP PLAN LOGIC ---
     function saveBackupSchedule() {
       backupInterval = document.getElementById('settingBackupInterval').value;
@@ -1460,11 +1518,6 @@
         authOverlay.classList.remove('hidden');
         if (footerUser) footerUser.innerText = "Guest";
       }
-    }
-
-    function toggleAuthMode(showRegister) {
-      document.getElementById('loginBox').classList.toggle('hidden', showRegister);
-      document.getElementById('registerBox').classList.toggle('hidden', !showRegister);
     }
 
     function handleRegister() {
@@ -1653,6 +1706,25 @@
         if (val) {
           registeredUsers = { ...registeredUsers, ...val };
           localStorage.setItem('edico_registered_users', JSON.stringify(registeredUsers));
+        }
+      });
+
+      activeRootRef.child('branding').on('value', snapshot => {
+        const val = snapshot.val();
+        if (val) {
+          if (val.houseName) {
+            houseName = val.houseName;
+            localStorage.setItem('edico_house_name', houseName);
+          }
+          if (val.currency) {
+            currentCurrency = val.currency;
+            localStorage.setItem('edico_currency', currentCurrency);
+          }
+          if (val.logoData !== undefined) {
+            logoData = val.logoData;
+            localStorage.setItem('edico_app_logo', logoData);
+          }
+          updateBrandingUI();
         }
       });
 
@@ -2397,7 +2469,7 @@
           db.ref(`properties/${syncKey}/staff/${staffId}`).remove();
         }
 
-        addNotification(`Employee removed.`);
+        addNotification(`Staff member removed.`);
         renderStaff();
       });
     }
@@ -2405,65 +2477,49 @@
     function handleStaffSignIn(e) {
       e.preventDefault();
       const staffId = document.getElementById('signInStaffSelect').value;
-      const enteredPin = document.getElementById('signInStaffPin').value.trim();
+      const pin = document.getElementById('signInStaffPin').value.trim();
 
-      const employee = localStaff[staffId];
-      if (!employee) return showPopupModal("Selection Error", "Select a valid employee.", null);
-      if (employee.pin !== enteredPin) return showPopupModal("Security Alert", "Incorrect Security PIN!", null);
+      const staff = localStaff[staffId];
+      if (!staff || staff.pin !== pin) {
+        return showPopupModal("Shift Sign-In Error", "Invalid staff PIN code entered!", null);
+      }
 
-      const shiftData = { staffId: employee.id, staffName: employee.name, role: employee.role, startTime: new Date().toLocaleTimeString() };
+      activeShift = {
+        staffId: staff.id,
+        staffName: staff.name,
+        role: staff.role,
+        startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        startDate: new Date().toLocaleDateString()
+      };
 
-      activeShift = shiftData;
       saveLocalStorage();
 
       if (db && syncKey !== 'OFFLINE-LOCAL') {
-        db.ref(`properties/${syncKey}/shift`).set(shiftData);
+        db.ref(`properties/${syncKey}/shift`).set(activeShift);
       }
 
-      addNotification(`Shift Started: ${employee.name}`);
+      document.getElementById('signInStaffPin').value = '';
+      addNotification(`Shift Started: ${staff.name} signed in.`);
       renderShiftState();
       renderStaff();
-      document.getElementById('shiftSignInForm').reset();
     }
 
     function openStaffSignOutModal() {
       if (!activeShift) return;
       document.getElementById('staffSignOutPinInput').value = '';
-      document.getElementById('signOutModalMessage').innerText = `Enter PIN for ${activeShift.staffName} to end shift.`;
+      document.getElementById('signOutModalMessage').innerText = `Sign out ${activeShift.staffName}? Enter PIN to confirm.`;
       document.getElementById('staffSignOutModal').classList.add('active');
     }
 
     function verifyStaffSignOut() {
-      if (!activeShift) return closeModal('staffSignOutModal');
-      const enteredPin = document.getElementById('staffSignOutPinInput').value.trim();
-      const employee = localStaff[activeShift.staffId];
+      const pin = document.getElementById('staffSignOutPinInput').value.trim();
+      const currentStaff = activeShift ? localStaff[activeShift.staffId] : null;
 
-      if (employee && employee.pin !== enteredPin) {
-        return showPopupModal("Authentication Failed", "Incorrect Staff PIN!", null);
+      if (currentStaff && currentStaff.pin !== pin) {
+        return showPopupModal("Security Error", "Incorrect PIN! Unable to end shift.", null);
       }
 
-      closeModal('staffSignOutModal');
-      performStaffSignOut();
-    }
-
-    function renderShiftState() {
-      const textDisplay = document.getElementById('shiftStatusText');
-      const detailsBox = document.getElementById('activeShiftDetails');
-      const signOutBtn = document.getElementById('signOutBtn');
-
-      if (activeShift && activeShift.staffName) {
-        textDisplay.innerHTML = `<span class="glowing-staff">Active: ${activeShift.staffName}</span>`;
-        detailsBox.innerHTML = `<strong>Staff:</strong> <span class="glowing-staff">${activeShift.staffName}</span><br><strong>Role:</strong> ${activeShift.role}<br><strong>Start Time:</strong> ${activeShift.startTime}`;
-        signOutBtn.style.display = 'inline-flex';
-      } else {
-        textDisplay.innerText = 'No Staff Shift Active';
-        detailsBox.innerHTML = '<em>No employee currently signed in.</em>';
-        signOutBtn.style.display = 'none';
-      }
-    }
-
-    function performStaffSignOut() {
-      const prevName = activeShift ? activeShift.staffName : "Staff";
+      const prevName = activeShift.staffName;
       activeShift = null;
       saveLocalStorage();
 
@@ -2471,66 +2527,89 @@
         db.ref(`properties/${syncKey}/shift`).remove();
       }
 
-      addNotification(`Shift ended for ${prevName}.`);
+      closeModal('staffSignOutModal');
+      addNotification(`Shift Ended: ${prevName} signed out.`);
       renderShiftState();
       renderStaff();
     }
 
+    function renderShiftState() {
+      const statusText = document.getElementById('shiftStatusText');
+      const activeDetails = document.getElementById('activeShiftDetails');
+      const signOutBtn = document.getElementById('signOutBtn');
+
+      if (activeShift) {
+        if (statusText) statusText.innerHTML = `Active: <strong class="glowing-staff">${activeShift.staffName}</strong>`;
+        if (activeDetails) {
+          activeDetails.innerHTML = `
+            <div><strong>Attendant:</strong> ${activeShift.staffName} (${activeShift.role})</div>
+            <div><strong>Shift Started:</strong> ${activeShift.startTime} on ${activeShift.startDate}</div>
+          `;
+        }
+        if (signOutBtn) signOutBtn.style.display = 'inline-flex';
+      } else {
+        if (statusText) statusText.innerText = "No Staff Shift Active";
+        if (activeDetails) activeDetails.innerText = "No employee currently signed in.";
+        if (signOutBtn) signOutBtn.style.display = 'none';
+      }
+    }
+
     function updateStats() {
-      let available = 0, occupied = 0, totalRooms = 0;
-      Object.values(localRooms).forEach(r => {
-        if (!r) return;
-        totalRooms++;
-        if (r.status === 'available') available++;
-        if (r.status === 'occupied') occupied++;
-      });
+      const totalRev = parseFloat(finances.total || 0);
+      const cash = parseFloat(finances.cash || 0);
+      const momo = parseFloat(finances.momo || 0);
 
-      document.getElementById('statAvailableCount').innerText = available;
-      const occupancyRate = totalRooms > 0 ? Math.round((occupied / totalRooms) * 100) : 0;
-      document.getElementById('statOccupancy').innerText = `${occupancyRate}%`;
+      document.getElementById('statTotalRev').innerText = `${currentCurrency} ${totalRev.toFixed(2)}`;
+      document.getElementById('statCash').innerText = `${currentCurrency} ${cash.toFixed(2)}`;
+      document.getElementById('statMoMo').innerText = `${currentCurrency} ${momo.toFixed(2)}`;
+      document.getElementById('grandTotalDailyRevenue').innerText = `${currentCurrency} ${totalRev.toFixed(2)}`;
 
-      document.getElementById('statTotalRev').innerText = `${currentCurrency} ${parseFloat(finances.total || 0).toFixed(2)}`;
-      document.getElementById('statCash').innerText = `${currentCurrency} ${parseFloat(finances.cash || 0).toFixed(2)}`;
-      document.getElementById('statMoMo').innerText = `${currentCurrency} ${parseFloat(finances.momo || 0).toFixed(2)}`;
-      document.getElementById('grandTotalDailyRevenue').innerText = `${currentCurrency} ${parseFloat(finances.total || 0).toFixed(2)}`;
+      const roomArray = Object.values(localRooms).filter(Boolean);
+      const totalRooms = roomArray.length;
+      const occupiedRooms = roomArray.filter(r => r.status === 'occupied').length;
+      const availableRooms = roomArray.filter(r => r.status === 'available').length;
+
+      document.getElementById('statAvailableCount').innerText = availableRooms;
+      const rate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
+      document.getElementById('statOccupancy').innerText = `${rate}%`;
+
+      document.querySelectorAll('.currSymbol').forEach(el => el.innerText = currentCurrency);
     }
 
     function renderTransactions() {
       const tbody = document.getElementById('transactionTableBody');
-      const filter = document.getElementById('logPeriodFilter')?.value || 'daily';
+      const period = document.getElementById('logPeriodFilter')?.value || 'daily';
       if (!tbody) return;
 
       tbody.innerHTML = '';
-      if (!localTransactions.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No activity recorded yet.</td></tr>';
-        return;
-      }
+      let filteredLogs = [...localTransactions];
 
       const now = new Date();
-      const filtered = localTransactions.filter(t => {
-        if (!t.rawDate) return true;
-        const tDate = new Date(t.rawDate);
+      if (period === 'daily') {
+        filteredLogs = filteredLogs.filter(t => new Date(t.rawDate || t.timestamp).toDateString() === now.toDateString());
+      } else if (period === 'monthly') {
+        filteredLogs = filteredLogs.filter(t => {
+          const d = new Date(t.rawDate || t.timestamp);
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        });
+      } else if (period === 'yearly') {
+        filteredLogs = filteredLogs.filter(t => new Date(t.rawDate || t.timestamp).getFullYear() === now.getFullYear());
+      }
 
-        if (filter === 'daily') return tDate.toDateString() === now.toDateString();
-        if (filter === 'monthly') return tDate.getMonth() === now.getMonth() && tDate.getFullYear() === now.getFullYear();
-        if (filter === 'yearly') return tDate.getFullYear() === now.getFullYear();
-        return true;
-      });
-
-      if (!filtered.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No activity logs match the selected period.</td></tr>';
+      if (!filteredLogs.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No activity recorded for selected period.</td></tr>';
         return;
       }
 
-      filtered.slice().reverse().forEach(t => {
+      filteredLogs.reverse().forEach(t => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${t.timestamp}</td>
-          <td><span class="sync-badge" style="background:${t.type === 'Check-In' ? '#dcfce7' : '#fee2e2'}; color:${t.type === 'Check-In' ? '#15803d' : '#b91c1c'};">${t.type}</span></td>
+          <td><span class="sync-badge" style="${t.type === 'Check-In' ? 'background:#dcfce7; color:#15803d;' : 'background:#fee2e2; color:#b91c1c;'}">${t.type}</span></td>
           <td>Room ${t.roomNumber}</td>
-          <td><strong>${t.guestName}</strong></td>
-          <td>${t.attendant || 'Admin'}</td>
-          <td>${t.paymentMethod}</td>
+          <td>${t.guestName}</td>
+          <td>${t.attendant}</td>
+          <td>${t.paymentMethod || 'N/A'}</td>
           <td><strong>${currentCurrency} ${parseFloat(t.amount || 0).toFixed(2)}</strong></td>
         `;
         tbody.appendChild(tr);
@@ -2542,120 +2621,42 @@
     }
 
     function exportTransactionsCSV() {
-      if (!localTransactions.length) return showPopupModal("Export Empty", "No transaction logs recorded to export.", null);
+      if (!localTransactions.length) return showPopupModal("CSV Export", "No transactions available to export.", null);
 
-      let csv = "Timestamp,Type,Room Number,Guest Name,Attendant,Payment Method,Amount\n";
+      let csv = "Date & Time,Type,Room Number,Guest Name,Attendant,Payment Method,Amount Paid\n";
       localTransactions.forEach(t => {
-        csv += `"${t.timestamp}","${t.type}","${t.roomNumber}","${t.guestName}","${t.attendant || 'Admin'}","${t.paymentMethod}","${t.amount}"\n`;
+        csv += `"${t.timestamp}","${t.type}","${t.roomNumber}","${t.guestName}","${t.attendant}","${t.paymentMethod || 'N/A'}","${t.amount}"\n`;
       });
 
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.setAttribute('download', `edico_guest_logs_${new Date().toISOString().slice(0, 10)}.csv`);
-      document.body.appendChild(a);
+      a.setAttribute('href', url);
+      a.setAttribute('download', `transactions_export_${new Date().toISOString().slice(0,10)}.csv`);
       a.click();
-      document.body.removeChild(a);
-    }
-
-    function connectSyncKeyDirect() {
-      const newKey = document.getElementById('syncKeyInput').value.trim();
-      if (!newKey) return showPopupModal("Input Error", "Please enter a valid Device Connection Key.", null);
-
-      syncKey = newKey;
-      localStorage.setItem('edico_sync_key', syncKey);
-
-      if (!connectedSyncList.includes(syncKey)) {
-        connectedSyncList.push(syncKey);
-        saveLocalStorage();
-      }
-
-      bindDatabaseListeners();
-
-      if (db && syncKey !== 'OFFLINE-LOCAL') {
-        db.ref(`properties/${syncKey}/connected_keys`).set(connectedSyncList);
-      }
-
-      renderConnectedSyncList();
-      showPopupModal("Cloud Paired", `Successfully connected to cloud sync key: ${syncKey}`, null);
-      addNotification(`Connected to cloud sync key ${syncKey}`);
-    }
-
-    function disconnectSyncKey() {
-      syncKey = 'OFFLINE-LOCAL';
-      localStorage.setItem('edico_sync_key', syncKey);
-      bindDatabaseListeners();
-      showPopupModal("Disconnected", "System operating in local offline mode.", null);
-      addNotification("Disconnected from cloud synchronization.");
-    }
-
-    function renderConnectedSyncList() {
-      const tbody = document.getElementById('connectedSyncTableBody');
-      if (!tbody) return;
-      tbody.innerHTML = '';
-
-      connectedSyncList.forEach(k => {
-        const isCurrent = k === syncKey;
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><strong>${k}</strong></td>
-          <td>${isCurrent ? '<span style="color:var(--success); font-weight:bold;">Active Connection</span>' : '<span style="color:var(--text-muted);">Saved Key</span>'}</td>
-          <td>
-            ${!isCurrent ? `<button class="btn btn-outline btn-sm" onclick="promptAdminAuth('removeSyncKey', '${k}')"><i class="fa-solid fa-trash"></i></button>` : '<em>In Use</em>'}
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function removeSyncKey(key) {
-      connectedSyncList = connectedSyncList.filter(k => k !== key);
-      saveLocalStorage();
-
-      if (db && syncKey !== 'OFFLINE-LOCAL') {
-        db.ref(`properties/${syncKey}/connected_keys`).set(connectedSyncList);
-      }
-
-      renderConnectedSyncList();
-      addNotification(`Removed key ${key} from saved sync list.`);
     }
 
     function loadSettings() {
       document.getElementById('settingHouseName').value = houseName;
       document.getElementById('settingCurrency').value = currentCurrency;
-      document.getElementById('appTitle').innerText = houseName;
-      document.getElementById('displayDefaultPassword').innerText = adminPassword;
-
-      const logoImg = document.getElementById('appLogo');
-      if (logoData) {
-        logoImg.src = logoData;
-        logoImg.style.display = 'block';
-      } else {
-        logoImg.style.display = 'none';
-      }
-
-      document.querySelectorAll('.currSymbol').forEach(el => el.innerText = currentCurrency);
+      document.getElementById('settingBackupInterval').value = backupInterval;
+      updateBrandingUI();
     }
 
-    function saveBrandingSettings() {
-      houseName = document.getElementById('settingHouseName').value.trim() || 'Edico Guest House';
-      currentCurrency = document.getElementById('settingCurrency').value;
+    function updateBrandingUI() {
+      const titleEl = document.getElementById('appTitle');
+      const logoEl = document.getElementById('appLogo');
 
-      localStorage.setItem('edico_house_name', houseName);
-      localStorage.setItem('edico_currency', currentCurrency);
+      if (titleEl) titleEl.innerText = houseName;
 
-      document.getElementById('appTitle').innerText = houseName;
-      document.querySelectorAll('.currSymbol').forEach(el => el.innerText = currentCurrency);
-
-      if (db && syncKey !== 'OFFLINE-LOCAL') {
-        db.ref(`properties/${syncKey}/branding`).set({ houseName, currency: currentCurrency });
+      if (logoEl) {
+        if (logoData) {
+          logoEl.src = logoData;
+          logoEl.style.display = 'block';
+        } else {
+          logoEl.style.display = 'none';
+        }
       }
-
-      renderRooms();
-      updateStats();
-      showPopupModal("Settings Saved", "Branding settings saved successfully!", null);
-      addNotification("System branding updated.");
     }
 
     function handleLogoUpload(e) {
@@ -2666,85 +2667,158 @@
       reader.onload = function(evt) {
         logoData = evt.target.result;
         localStorage.setItem('edico_app_logo', logoData);
-
-        const logoImg = document.getElementById('appLogo');
-        logoImg.src = logoData;
-        logoImg.style.display = 'block';
-
-        if (db && syncKey !== 'OFFLINE-LOCAL') {
-          db.ref(`properties/${syncKey}/logo`).set(logoData);
-        }
-
-        addNotification("New Guest House logo uploaded.");
+        updateBrandingUI();
       };
       reader.readAsDataURL(file);
+    }
+
+    function saveBrandingSettings() {
+      houseName = document.getElementById('settingHouseName').value.trim() || 'Edico Guest House';
+      currentCurrency = document.getElementById('settingCurrency').value;
+
+      localStorage.setItem('edico_house_name', houseName);
+      localStorage.setItem('edico_currency', currentCurrency);
+      localStorage.setItem('edico_app_logo', logoData);
+
+      if (db && syncKey !== 'OFFLINE-LOCAL') {
+        db.ref(`properties/${syncKey}/branding`).set({
+          houseName,
+          currency: currentCurrency,
+          logoData
+        });
+      }
+
+      updateBrandingUI();
+      updateStats();
+      renderRooms();
+      showPopupModal("Success", "Branding settings saved successfully!", null);
     }
 
     function removeLogo() {
       logoData = '';
       localStorage.removeItem('edico_app_logo');
-
-      const logoImg = document.getElementById('appLogo');
-      logoImg.src = '';
-      logoImg.style.display = 'none';
+      document.getElementById('settingLogoFile').value = '';
 
       if (db && syncKey !== 'OFFLINE-LOCAL') {
-        db.ref(`properties/${syncKey}/logo`).remove();
+        db.ref(`properties/${syncKey}/branding/logoData`).remove();
       }
 
-      addNotification("Guest House logo removed.");
+      updateBrandingUI();
+      showPopupModal("Success", "Logo removed successfully!", null);
     }
 
     function updateAdminPassword() {
-      const currentInput = document.getElementById('currAdminPass').value.trim();
-      const newPass = document.getElementById('newAdminPass').value.trim();
+      const curr = document.getElementById('currAdminPass').value;
+      const newP = document.getElementById('newAdminPass').value.trim();
 
-      if (currentInput !== adminPassword) {
-        return showPopupModal("Security Error", "Current Admin Password incorrect!", null);
-      }
-      if (!newPass) {
-        return showPopupModal("Security Error", "New Admin Password cannot be empty!", null);
-      }
+      if (curr !== adminPassword) return showPopupModal("Security Error", "Current Admin Password incorrect!", null);
+      if (!newP) return showPopupModal("Security Error", "New password cannot be empty!", null);
 
-      adminPassword = newPass;
+      adminPassword = newP;
       localStorage.setItem('edico_admin_pass', adminPassword);
-      document.getElementById('displayDefaultPassword').innerText = adminPassword;
 
       if (db && syncKey !== 'OFFLINE-LOCAL') {
         db.ref(`properties/${syncKey}/adminPassword`).set(adminPassword);
       }
 
+      document.getElementById('displayDefaultPassword').innerText = adminPassword;
       document.getElementById('currAdminPass').value = '';
       document.getElementById('newAdminPass').value = '';
 
-      showPopupModal("Success", "Master Admin Password changed successfully!", null);
-      addNotification("Master Admin Password updated.");
+      showPopupModal("Success", "Master Admin Password updated successfully!", null);
+    }
+
+    function connectSyncKeyDirect() {
+      const input = document.getElementById('syncKeyInput').value.trim();
+      if (!input) return showPopupModal("Sync Connection Error", "Please enter a Device Sync Key.", null);
+
+      syncKey = input;
+      localStorage.setItem('edico_sync_key', syncKey);
+
+      if (!connectedSyncList.includes(syncKey)) {
+        connectedSyncList.push(syncKey);
+        saveLocalStorage();
+      }
+
+      initFirebase();
+
+      if (db) {
+        db.ref(`properties/${syncKey}/connected_keys`).set(connectedSyncList);
+      }
+
+      renderConnectedSyncList();
+      showPopupModal("Pairing Success", `Successfully connected to sync key: ${syncKey}`, null);
+    }
+
+    function connectSpecificKey(key) {
+      document.getElementById('syncKeyInput').value = key;
+      promptAdminAuth('connectSync');
+    }
+
+    function disconnectSyncKey() {
+      syncKey = 'OFFLINE-LOCAL';
+      localStorage.setItem('edico_sync_key', syncKey);
+      initFirebase();
+      showPopupModal("Disconnected", "System operating in local offline mode.", null);
+    }
+
+    function removeSyncKey(key) {
+      connectedSyncList = connectedSyncList.filter(k => k !== key);
+      saveLocalStorage();
+
+      if (db && syncKey !== 'OFFLINE-LOCAL') {
+        db.ref(`properties/${syncKey}/connected_keys`).set(connectedSyncList);
+      }
+
+      if (syncKey === key) {
+        disconnectSyncKey();
+      } else {
+        renderConnectedSyncList();
+      }
+    }
+
+    function renderConnectedSyncList() {
+      const tbody = document.getElementById('connectedSyncTableBody');
+      if (!tbody) return;
+
+      tbody.innerHTML = '';
+      connectedSyncList.forEach(key => {
+        const tr = document.createElement('tr');
+        const isActive = key === syncKey;
+        tr.innerHTML = `
+          <td><strong>${key}</strong></td>
+          <td>${isActive ? '<span style="color:var(--success); font-weight:bold;">Active</span>' : '<span style="color:var(--text-muted);">Saved</span>'}</td>
+          <td>
+            ${!isActive ? `<button class="btn btn-accent btn-sm" onclick="connectSpecificKey('${key}')"><i class="fa-solid fa-plug"></i> Connect</button>` : ''}
+            <button class="btn btn-danger btn-sm" onclick="promptAdminAuth('removeSyncKey', '${key}')"><i class="fa-solid fa-trash"></i> Remove</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
     }
 
     function switchTab(tabId, btnEl) {
       document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
 
-      const targetTab = document.getElementById(tabId);
-      if (targetTab) targetTab.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
       if (btnEl) btnEl.classList.add('active');
     }
 
-    function closeModal(modalId) {
-      const modal = document.getElementById(modalId);
-      if (modal) modal.classList.remove('active');
-    }
-
-    function togglePinVisibility(inputId, btnEl) {
+    function togglePinVisibility(inputId, btn) {
       const input = document.getElementById(inputId);
       if (!input) return;
       if (input.type === 'password') {
         input.type = 'text';
-        if (btnEl) btnEl.innerHTML = '<i class="fa-solid fa-eye-slash"></i>';
+        btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i>';
       } else {
         input.type = 'password';
-        if (btnEl) btnEl.innerHTML = '<i class="fa-solid fa-eye"></i>';
+        btn.innerHTML = '<i class="fa-solid fa-eye"></i>';
       }
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.remove('active');
     }
   </script>
 </body>
