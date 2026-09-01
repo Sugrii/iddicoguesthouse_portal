@@ -1,4 +1,4 @@
- :root {
+  :root {
       --primary: #0f172a;
       --accent: #2563eb;
       --accent-hover: #1d4ed8;
@@ -326,7 +326,7 @@
       font-weight: 900;
       letter-spacing: 2px;
       margin-bottom: 0.2rem;
-      font-family: 'Courier New', Courier, monospace;
+      font-family:monospace, sans-serif;
       animation: colorShiftGlow 8s infinite alternate ease-in-out;
     }
 
