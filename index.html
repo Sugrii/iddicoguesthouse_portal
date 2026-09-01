@@ -1,0 +1,2481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edico Guest House Management - Advanced Cloud Edition</title>
+  
+  <!-- Firebase v9 Compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  
+  <!-- FontAwesome for Pro Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --primary: #0f172a;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --radius: 12px;
+      --shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.02);
+    }
+
+    body.dark-theme {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --shadow: 0 10px 15px -3px rgba(0,0,0,0.4);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; transition: background-color 0.3s, color 0.3s; }
+
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-container { display: flex; align-items: center; gap: 0.8rem; }
+    .brand-logo { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; background: #fff; border: 2px solid #38bdf8; display: none; }
+    .brand-title { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.3px; color: #f8fafc; }
+    .brand-subtitle { font-size: 0.75rem; color: #94a3b8; }
+
+    .header-actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .status-pill {
+      background: rgba(255,255,255,0.08);
+      padding: 0.4rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
+    .status-dot.offline { background: #ef4444; }
+
+    .notif-wrapper { position: relative; cursor: pointer; }
+    .notif-bell { font-size: 1.2rem; color: #fff; position: relative; padding: 0.4rem; }
+    .notif-badge {
+      position: absolute;
+      top: 0; right: 0;
+      background: var(--danger);
+      color: white;
+      font-size: 0.65rem;
+      font-weight: bold;
+      border-radius: 9999px;
+      padding: 0.15rem 0.4rem;
+      display: none;
+    }
+    .notif-dropdown {
+      position: absolute;
+      top: 130%; right: 0;
+      width: 320px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      border: 1px solid var(--border);
+      display: none;
+      z-index: 200;
+      color: var(--text-main);
+    }
+    .notif-dropdown.active { display: block; }
+    .notif-header { padding: 0.75rem 1rem; background: rgba(0,0,0,0.03); border-bottom: 1px solid var(--border); font-weight: bold; display: flex; justify-content: space-between; font-size: 0.85rem; }
+    .notif-list { max-height: 250px; overflow-y: auto; }
+    .notif-item { padding: 0.65rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.8rem; cursor: pointer; transition: background 0.2s; }
+    .notif-item.unread { background: rgba(37,99,235,0.1); font-weight: 600; }
+    .notif-item:hover { background: rgba(0,0,0,0.05); }
+    .notif-time { font-size: 0.7rem; color: var(--text-muted); display: block; margin-top: 0.2rem; }
+
+    .nav-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem;
+      display: flex;
+      gap: 1.5rem;
+      overflow-x: auto;
+      align-items: center;
+    }
+
+    .nav-btn {
+      background: none;
+      border: none;
+      padding: 0.9rem 0.2rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      white-space: nowrap;
+    }
+
+    .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .theme-toggle-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: background 0.3s;
+    }
+    .theme-toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    main { flex: 1; max-width: 1350px; width: 100%; margin: 1.5rem auto; padding: 0 1rem; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      padding: 1.2rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .stat-info h4 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+    .stat-info p { font-size: 1.5rem; font-weight: 800; margin-top: 0.2rem; color: var(--text-main); }
+    .stat-icon { font-size: 1.6rem; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+      background: var(--surface);
+      padding: 1rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .filter-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .filter-btn {
+      padding: 0.4rem 0.9rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-main);
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+    .rooms-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .room-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 2px solid var(--border);
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .room-card.occupied { border-color: #fca5a5; background: rgba(239, 68, 68, 0.05); }
+    .room-card.available { border-color: #a7f3d0; background: rgba(16, 185, 129, 0.05); }
+    .room-card.maintenance { border-color: #fde68a; background: rgba(245, 158, 11, 0.05); }
+
+    .room-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+    .room-number-tag { font-size: 1.25rem; font-weight: 800; color: var(--text-main); }
+    .room-type { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+
+    .amenities-list { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.6rem 0; }
+    .amenity-chip { font-size: 0.7rem; background: rgba(0,0,0,0.06); color: var(--text-main); padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 600; }
+
+    .room-price-tag { font-size: 1.1rem; font-weight: 700; color: var(--accent); margin-bottom: 0.75rem; }
+
+    .guest-details-box {
+      background: rgba(0,0,0,0.04);
+      border: 1px solid var(--border);
+      padding: 0.6rem;
+      border-radius: 6px;
+      font-size: 0.825rem;
+      margin-bottom: 1rem;
+    }
+
+    .btn {
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+    .btn-accent { background: var(--accent); color: white; }
+    .btn-success { background: var(--success); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-warning { background: var(--warning); color: white; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+    .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.775rem; }
+
+    .card-box {
+      background: var(--surface);
+      padding: 1.5rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group { margin-bottom: 1.1rem; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-muted); }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 0.65rem 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+      background: var(--bg);
+      color: var(--text-main);
+    }
+
+    .checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.5rem; }
+    .checkbox-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.825rem; cursor: pointer; }
+
+    .input-pin-wrapper { position: relative; display: flex; align-items: center; }
+    .input-pin-wrapper input { padding-right: 2.5rem; }
+    .toggle-pin-btn { position: absolute; right: 0.75rem; cursor: pointer; color: var(--text-muted); border: none; background: transparent; }
+
+    .glowing-staff { animation: glowPulse 1.5s infinite alternate; color: #2563eb; font-weight: bold; }
+    @keyframes glowPulse { 0% { text-shadow: 0 0 2px #2563eb; } 100% { text-shadow: 0 0 10px #38bdf8; } }
+
+    .table-wrapper { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; min-width: 600px; }
+    th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.875rem; }
+    th { background: rgba(0,0,0,0.03); font-weight: 700; color: var(--text-muted); }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-card {
+      background: var(--surface);
+      width: 100%;
+      max-width: 520px;
+      border-radius: var(--radius);
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+      overflow: hidden;
+      color: var(--text-main);
+    }
+    .modal-header { background: var(--primary); color: white; padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; }
+    .modal-body { padding: 1.25rem; max-height: 80vh; overflow-y: auto; }
+    .modal-footer { padding: 0.8rem 1.25rem; background: rgba(0,0,0,0.03); border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.5rem; }
+
+    .sync-badge { background: #e0f2fe; color: #0369a1; padding: 0.25rem 0.6rem; border-radius: 6px; font-weight: 700; font-size: 0.8rem; }
+
+    /* Entry Password Overlay & Digital Clock Styles */
+    #masterAuthScreen {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: #0f172a;
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #ffffff;
+      padding: 1.5rem;
+      overflow-y: auto;
+    }
+
+    .clock-display {
+      font-size: clamp(2.2rem, 6vw, 3.8rem);
+      font-weight: 800;
+      letter-spacing: 2px;
+      animation: colorCycleGlow 8s infinite alternate ease-in-out;
+      margin-bottom: 0.2rem;
+      font-family: 'Courier New', Courier, monospace;
+      text-align: center;
+    }
+
+    @keyframes colorCycleGlow {
+      0% { color: #38bdf8; text-shadow: 0 0 12px #38bdf8, 0 0 25px #38bdf8; }
+      33% { color: #34d399; text-shadow: 0 0 12px #34d399, 0 0 25px #34d399; }
+      66% { color: #f472b6; text-shadow: 0 0 12px #f472b6, 0 0 25px #f472b6; }
+      100% { color: #fbbf24; text-shadow: 0 0 12px #fbbf24, 0 0 25px #fbbf24; }
+    }
+
+    .clock-date {
+      font-size: clamp(0.85rem, 2vw, 1.1rem);
+      color: #94a3b8;
+      margin-bottom: 1.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+
+    .auth-box {
+      background: #1e293b;
+      padding: 2rem;
+      border-radius: var(--radius);
+      border: 1px solid #334155;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+    }
+
+    footer {
+      background: var(--primary);
+      color: #94a3b8;
+      text-align: center;
+      padding: 1.2rem;
+      font-size: 0.85rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      margin-top: auto;
+    }
+
+    @media (max-width: 768px) {
+      header { flex-direction: column; gap: 0.8rem; align-items: flex-start; padding: 0.85rem 1rem; }
+      .header-actions { width: 100%; justify-content: space-between; }
+      .auth-box { padding: 1.5rem; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .filter-group { justify-content: space-between; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ADMIN MASTER LOCK OVERLAY WITH DIGITAL CLOCK -->
+  <div id="masterAuthScreen">
+    <div id="largeDigitalClock" class="clock-display">00:00:00 AM</div>
+    <div id="largeDigitalDate" class="clock-date">Loading date...</div>
+    
+    <div class="auth-box">
+      <h2 style="margin-bottom: 0.5rem; font-size: 1.5rem;" id="gateBrandTitle">Edico Guest House</h2>
+      <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 1.5rem;" id="authSubtitleText">Enter Security Password or Staff PIN to Access System</p>
+      
+      <!-- ADMIN LOGIN FORM -->
+      <form id="adminLoginForm" onsubmit="unlockSystemMaster(event)">
+        <div class="form-group" style="text-align: left;">
+          <label style="color: #cbd5e1;">Admin Password</label>
+          <div class="input-pin-wrapper">
+            <input type="password" id="gatePasswordInput" required placeholder="Enter admin password" style="background: #0f172a; color: #fff; border-color: #334155;" autofocus />
+            <button type="button" class="toggle-pin-btn" onclick="togglePinVisibility('gatePasswordInput', this)"><i class="fa-solid fa-eye"></i></button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-accent" style="width: 100%; padding: 0.8rem; font-size: 1rem; margin-top: 0.5rem;">
+          <i class="fa-solid fa-lock-open"></i> Authenticate & Enter
+        </button>
+      </form>
+
+      <!-- STAFF LOGIN FORM (Hidden by Default) -->
+      <form id="staffLoginForm" onsubmit="unlockSystemStaff(event)" style="display: none;">
+        <div class="form-group" style="text-align: left;">
+          <label style="color: #cbd5e1;">Select Staff Member</label>
+          <select id="loginStaffSelect" required style="background: #0f172a; color: #fff; border-color: #334155; margin-bottom: 0.8rem;">
+            <option value="">-- Choose Employee --</option>
+          </select>
+        </div>
+        <div class="form-group" style="text-align: left;">
+          <label style="color: #cbd5e1;">Staff Security PIN</label>
+          <div class="input-pin-wrapper">
+            <input type="password" id="loginStaffPin" required placeholder="Enter 4-digit PIN" style="background: #0f172a; color: #fff; border-color: #334155;" />
+            <button type="button" class="toggle-pin-btn" onclick="togglePinVisibility('loginStaffPin', this)"><i class="fa-solid fa-eye"></i></button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-success" style="width: 100%; padding: 0.8rem; font-size: 1rem; margin-top: 0.5rem;">
+          <i class="fa-solid fa-user-check"></i> Staff Login & Start Shift
+        </button>
+      </form>
+
+      <div style="margin-top: 1.2rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; border-top: 1px solid #334155; padding-top: 1rem;">
+        <button type="button" id="toggleLoginModeBtn" onclick="toggleAuthMode()" style="background:none; border:none; color:#38bdf8; cursor:pointer; font-weight:600;">
+          <i class="fa-solid fa-users-gear"></i> Staff Login
+        </button>
+        <button type="button" onclick="openForgotPassModal()" style="background:none; border:none; color:#94a3b8; cursor:pointer;">
+          Forgot Password?
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand-container">
+      <img id="appLogo" class="brand-logo" alt="Guest House Logo" />
+      <div>
+        <div id="appTitle" class="brand-title">Edico Guest House</div>
+        <div class="brand-subtitle">Management System & Cloud Hub</div>
+      </div>
+    </div>
+    
+    <div class="header-actions">
+      <!-- DARK THEME BUTTON MOVED TO HEADER -->
+      <button class="theme-toggle-btn" onclick="toggleDarkTheme()">
+        <i class="fa-solid fa-moon" id="themeIcon"></i>
+        <span id="themeBtnText">Dark Mode</span>
+      </button>
+
+      <!-- NOTIFICATION BELL -->
+      <div class="notif-wrapper" id="notifWrapper">
+        <div class="notif-bell" onclick="toggleNotifications(event)">
+          <i class="fa-solid fa-bell"></i>
+          <span class="notif-badge" id="notifBadge">0</span>
+        </div>
+        <div class="notif-dropdown" id="notifDropdown">
+          <div class="notif-header">
+            <span>System Activity Notifications</span>
+            <span style="cursor:pointer; color:var(--accent);" onclick="markAllNotificationsRead()">Mark all as read</span>
+          </div>
+          <div class="notif-list" id="notifList">
+            <div class="notif-item" style="text-align:center; color:var(--text-muted);">No activity recorded yet.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-pill">
+        <span class="status-dot" id="cloudStatusDot"></span>
+        <span id="cloudStatusText">Local Mode</span>
+      </div>
+      
+      <div class="status-pill">
+        <i class="fa-solid fa-key text-warning"></i>
+        <span>Sync Key:</span>
+        <span id="headerSyncKey" class="sync-badge" style="cursor:pointer;" onclick="toggleSyncKeyVisibility()">••••••••</span>
+        <i class="fa-solid fa-eye text-muted" id="syncKeyEyeIcon" style="cursor:pointer;" onclick="toggleSyncKeyVisibility()"></i>
+      </div>
+
+      <div class="status-pill" id="activeShiftDisplay" style="border-color: #38bdf8;">
+        <i class="fa-solid fa-user-clock text-accent"></i>
+        <span id="shiftStatusText">No Staff Shift Active</span>
+      </div>
+
+      <button class="btn btn-outline btn-sm" style="color:white; border-color: rgba(255,255,255,0.3)" onclick="promptAdminAuth('settings')">
+        <i class="fa-solid fa-lock"></i> Admin
+      </button>
+
+      <!-- LOGOUT BUTTON TO RETURN TO ADMIN ENTRY PAGE -->
+      <button class="btn btn-danger btn-sm" onclick="logoutSystem()">
+        <i class="fa-solid fa-right-from-bracket"></i> Logout
+      </button>
+    </div>
+  </header>
+
+  <!-- NAVIGATION -->
+  <nav class="nav-bar">
+    <button class="nav-btn active" onclick="switchTab('roomsTab', this)"><i class="fa-solid fa-door-open"></i> Rooms & Check-In</button>
+    <button class="nav-btn" onclick="switchTab('shiftsTab', this)"><i class="fa-solid fa-id-card"></i> Staff & Shift Operations</button>
+    <button class="nav-btn" onclick="switchTab('financeTab', this)"><i class="fa-solid fa-wallet"></i> Financials & Check Logs</button>
+    <button class="nav-btn" onclick="promptAdminAuth('settingsTab')"><i class="fa-solid fa-sliders"></i> System Settings & Sync</button>
+  </nav>
+
+  <!-- MAIN CONTAINER -->
+  <main>
+
+    <!-- TAB 1: ROOMS & CHECK-IN -->
+    <div id="roomsTab" class="tab-content active">
+      
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-info">
+            <h4>Total Revenue</h4>
+            <p id="statTotalRev">GH₵ 0.00</p>
+          </div>
+          <div class="stat-icon" style="background:#dcfce7; color:#15803d;"><i class="fa-solid fa-money-bill-wave"></i></div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-info">
+            <h4>Physical Cash</h4>
+            <p id="statCash">GH₵ 0.00</p>
+          </div>
+          <div class="stat-icon" style="background:#e0e7ff; color:#4338ca;"><i class="fa-solid fa-coins"></i></div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-info">
+            <h4>Mobile Money</h4>
+            <p id="statMoMo">GH₵ 0.00</p>
+          </div>
+          <div class="stat-icon" style="background:#fef3c7; color:#b45309;"><i class="fa-solid fa-mobile-screen-button"></i></div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-info">
+            <h4>Available Rooms</h4>
+            <p id="statAvailableCount">0</p>
+          </div>
+          <div class="stat-icon" style="background:#d1fae5; color:#047857;"><i class="fa-solid fa-bed"></i></div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-info">
+            <h4>Occupancy Rate</h4>
+            <p id="statOccupancy">0%</p>
+          </div>
+          <div class="stat-icon" style="background:#e0f2fe; color:#0369a1;"><i class="fa-solid fa-chart-pie"></i></div>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="filter-group">
+          <button class="filter-btn active" onclick="filterRooms('all', this)">All Rooms</button>
+          <button class="filter-btn" onclick="filterRooms('available', this)">Available Only</button>
+          <button class="filter-btn" onclick="filterRooms('occupied', this)">Occupied Only</button>
+          <button class="filter-btn" onclick="filterRooms('maintenance', this)">Maintenance</button>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; align-items:center;">
+          <input type="text" id="roomSearchInput" placeholder="Search room # or name..." oninput="renderRooms()" style="padding:0.4rem 0.8rem; border:1px solid var(--border); border-radius:6px; font-size:0.85rem;" />
+          <button class="btn btn-accent btn-sm" onclick="promptAdminAuth('addRoom')"><i class="fa-solid fa-plus"></i> Add New Room</button>
+        </div>
+      </div>
+
+      <div class="rooms-grid" id="roomsContainer"></div>
+    </div>
+
+    <!-- TAB 2: STAFF & SHIFTS -->
+    <div id="shiftsTab" class="tab-content">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+        
+        <div>
+          <div class="card-box">
+            <h3 style="margin-bottom: 0.5rem;"><i class="fa-solid fa-right-to-bracket text-accent"></i> Staff Shift Sign-In</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Registered employees must sign in with their PIN to perform guest operations.</p>
+            
+            <form id="shiftSignInForm" onsubmit="handleStaffSignIn(event)">
+              <div class="form-group">
+                <label>Select Staff Member</label>
+                <select id="signInStaffSelect" required><option value="">-- Choose Employee --</option></select>
+              </div>
+              <div class="form-group">
+                <label>Staff Security PIN</label>
+                <div class="input-pin-wrapper">
+                  <input type="password" id="signInStaffPin" required placeholder="Enter 4-digit PIN" />
+                  <button type="button" class="toggle-pin-btn" onclick="togglePinVisibility('signInStaffPin', this)"><i class="fa-solid fa-eye"></i></button>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-success" style="width: 100%;"><i class="fa-solid fa-key"></i> Sign In to Start Shift</button>
+            </form>
+          </div>
+
+          <div class="card-box" id="activeShiftBox">
+            <h3 style="margin-bottom: 0.5rem;"><i class="fa-solid fa-user-check text-success"></i> Current Active Shift</h3>
+            <div id="activeShiftDetails" style="font-size: 0.9rem; line-height: 1.6; margin: 0.8rem 0;">
+              No employee currently signed in.
+            </div>
+            <button class="btn btn-danger btn-sm" id="signOutBtn" style="display:none;" onclick="openStaffSignOutModal()">
+              <i class="fa-solid fa-right-from-bracket"></i> Sign Out Current Shift
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div class="card-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+              <h3><i class="fa-solid fa-users"></i> Registered Staff Roster</h3>
+              <button class="btn btn-accent btn-sm" onclick="promptAdminAuth('addStaff')"><i class="fa-solid fa-user-plus"></i> Register New Employee</button>
+            </div>
+            
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Role</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="staffTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TAB 3: FINANCIALS & CHECK LOGS CARD -->
+    <div id="financeTab" class="tab-content">
+      <div class="card-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem; flex-wrap:wrap; gap:1rem;">
+          <div>
+            <h3><i class="fa-solid fa-clipboard-list text-accent"></i> Check-In & Check-Out Detail Logs</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Real-time details of all room activity and cash/MoMo transactions.</p>
+          </div>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn btn-accent btn-sm" onclick="openManualLogModal()"><i class="fa-solid fa-plus-circle"></i> Manual Financial Log</button>
+            <button class="btn btn-outline btn-sm" onclick="printTransactionsPDF()"><i class="fa-solid fa-print"></i> Print Details</button>
+            <button class="btn btn-success btn-sm" onclick="exportTransactionsCSV()"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+          </div>
+        </div>
+        
+        <div class="table-wrapper">
+          <table id="printableTransactionTable">
+            <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>Action / Type</th>
+                <th>Room #</th>
+                <th>Guest Name</th>
+                <th>Shift Attendant</th>
+                <th>Payment Method</th>
+                <th>Amount Paid</th>
+              </tr>
+            </thead>
+            <tbody id="transactionTableBody">
+              <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No activity recorded yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: SYSTEM SETTINGS & CLOUD SYNC -->
+    <div id="settingsTab" class="tab-content">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+        
+        <div class="card-box">
+          <h3><i class="fa-solid fa-network-wired text-accent"></i> Cloud Pairing & Sync Connection</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Enter or manage your <strong>Device Sync Key</strong> to synchronize multiple devices.
+          </p>
+          
+          <div class="form-group">
+            <label>Device Connection Key</label>
+            <input type="password" id="syncKeyInput" placeholder="e.g. EDICO-GUESTHOUSE-ACCRA" />
+          </div>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+            <button class="btn btn-accent" style="flex:1;" onclick="connectSyncKeyDirect()"><i class="fa-solid fa-plug"></i> Connect & Sync</button>
+            <button class="btn btn-danger" style="flex:1;" onclick="disconnectSyncKey()"><i class="fa-solid fa-plug-circle-xmark"></i> Disconnect</button>
+          </div>
+
+          <h4 style="font-size: 0.85rem; font-weight:700; color:var(--text-muted); margin-bottom: 0.5rem;">Connected Sync Keys</h4>
+          <div class="table-wrapper">
+            <table style="font-size: 0.8rem;">
+              <thead>
+                <tr>
+                  <th>Sync Key</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="connectedSyncTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <h3><i class="fa-solid fa-building text-accent"></i> Guest House Branding</h3>
+          
+          <div class="form-group" style="margin-top: 0.8rem;">
+            <label>Guest House Name</label>
+            <input type="text" id="settingHouseName" placeholder="Edico Guest House" />
+          </div>
+          
+          <div class="form-group">
+            <label>System Currency</label>
+            <select id="settingCurrency">
+              <option value="GH₵">Ghana Cedi (GH₵)</option>
+              <option value="$">US Dollar ($)</option>
+              <option value="€">Euro (€)</option>
+              <option value="£">British Pound (£)</option>
+              <option value="₦">Nigerian Naira (₦)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Upload Logo Image</label>
+            <input type="file" id="settingLogoFile" accept="image/*" onchange="handleLogoUpload(event)" />
+          </div>
+
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-success" style="flex:1;" onclick="saveBrandingSettings()">Save Settings</button>
+            <button class="btn btn-outline btn-danger" onclick="removeLogo()">Remove Logo</button>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <h3><i class="fa-solid fa-database text-accent"></i> System Backup & Schedule</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.8rem;">
+            Export or import system data JSON files, and schedule automatic reminders.
+          </p>
+
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 1.2rem;">
+            <button class="btn btn-accent" style="flex: 1;" onclick="exportSystemBackup()"><i class="fa-solid fa-download"></i> Export Data</button>
+            <button class="btn btn-warning" style="flex: 1;" onclick="document.getElementById('importBackupFileInput').click()"><i class="fa-solid fa-upload"></i> Import Data</button>
+            <input type="file" id="importBackupFileInput" accept=".json" style="display: none;" onchange="importSystemBackup(event)" />
+          </div>
+
+          <div class="form-group">
+            <label>Automated Backup Alert Schedule</label>
+            <select id="settingBackupSchedule" onchange="updateBackupScheduleSetting()">
+              <option value="none">Disabled (Manual Only)</option>
+              <option value="daily">Daily Alert (Every 24 Hours)</option>
+              <option value="monthly">Monthly Alert (Every 30 Days)</option>
+              <option value="yearly">Yearly Alert (Every 365 Days)</option>
+            </select>
+          </div>
+          <p style="font-size: 0.75rem; color: var(--text-muted);" id="backupScheduleStatus">Backup Schedule Status: Active</p>
+        </div>
+
+        <div class="card-box">
+          <h3><i class="fa-solid fa-shield-halved text-danger"></i> Admin Security Settings</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Default Master Password: <strong style="color:var(--accent);" id="displayDefaultPassword">admin123</strong></p>
+          
+          <div class="form-group">
+            <label>Current Admin Password</label>
+            <div class="input-pin-wrapper">
+              <input type="password" id="currAdminPass" />
+              <button type="button" class="toggle-pin-btn" onclick="togglePinVisibility('currAdminPass', this)"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>New Admin Password</label>
+            <div class="input-pin-wrapper">
+              <input type="password" id="newAdminPass" />
+              <button type="button" class="toggle-pin-btn" onclick="togglePinVisibility('newAdminPass', this)"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Secret Recovery Word / PIN (Owner Only)</label>
+            <div class="input-pin-wrapper">
+              <input type="password" id="newRecoverySecret" placeholder="Set secret phrase or PIN for recovery" />
+              <button type="button" class="toggle-pin-btn" onclick="togglePinVisibility('newRecoverySecret', this)"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
+          <button class="btn btn-danger" style="width: 100%;" onclick="updateAdminPassword()">Change Admin Password & Recovery Secret</button>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    <div>&copy; <span id="footerYear">2026</span> Edico Guest House Management System. All Rights Reserved.</div>
+  </footer>
+
+  <!-- MODALS -->
+  <div class="modal-overlay" id="popupModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="popupModalTitle"><i class="fa-solid fa-circle-info"></i> Information</h3>
+        <button style="background:none; border:none; color:white; cursor:pointer;" onclick="closeModal('popupModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p id="popupModalMessage" style="font-size: 0.9rem; line-height: 1.5;"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="popupModalBackBtn" onclick="closeModal('popupModal')">Close</button>
+        <button class="btn btn-accent" id="popupModalProceedBtn">Proceed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORGOT / RECOVER ADMIN PASSWORD MODAL -->
+  <div class="modal-overlay" id="forgotPassModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-key"></i> Admin Password Recovery</h3>
+        <button style="background:none; border:none; color:white; cursor:pointer;" onclick="closeModal('forgotPassModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+          To recover or reset your Admin Password, enter your Secret Recovery PIN or Word below (known only by the owner).
+        </p>
+        <div class="form-group">
+          <label>Secret Recovery Word / PIN</label>
+          <div class="input-pin-wrapper">
+            <input type="password" id="recoverySecretInput" placeholder="Enter Secret Word or PIN" />
+            <button type="button" class="toggle-pin-btn" onclick="togglePinVisibility('recoverySecretInput', this)"><i class="fa-solid fa-eye"></i></button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('forgotPassModal')">Cancel</button>
+        <button class="btn btn-accent" onclick="verifyPasswordRecovery()">Recover Password</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANUAL FINANCIAL LOG MODAL -->
+  <div class="modal-overlay" id="manualLogModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-file-invoice-dollar"></i> Manual Financial & Check Log</h3>
+        <button style="background:none; border:none; color:white; cursor:pointer;" onclick="closeModal('manualLogModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="handleManualLogSubmit(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Action / Type</label>
+            <select id="manualLogType" required>
+              <option value="Manual Entry">Manual Check/Entry</option>
+              <option value="Miscellaneous Revenue">Miscellaneous Revenue</option>
+              <option value="Adjustment Log">Adjustment Log</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Room # (Optional)</label>
+            <input type="text" id="manualLogRoom" placeholder="e.g. 101 or N/A" />
+          </div>
+          <div class="form-group">
+            <label>Guest / Customer Name</label>
+            <input type="text" id="manualLogGuest" required placeholder="Name or description" />
+          </div>
+          <div class="form-group">
+            <label>Payment Method</label>
+            <select id="manualLogPayment" required onchange="toggleManualMomoNetwork(this.value)">
+              <option value="Cash">Physical Cash</option>
+              <option value="MoMo">Mobile Money (MoMo)</option>
+            </select>
+          </div>
+          <div class="form-group" id="manualMomoNetGroup" style="display: none;">
+            <label>MoMo Provider Network</label>
+            <select id="manualMomoNetwork">
+              <option value="MTN MoMo">MTN MoMo</option>
+              <option value="Telecel">Telecel</option>
+              <option value="AirtelTigo">AirtelTigo</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Amount (<span class="currSymbol">GH₵</span>)</label>
+            <input type="number" step="0.01" id="manualLogAmount" required placeholder="0.00" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('manualLogModal')">Cancel</button>
+          <button type="submit" class="btn btn-accent">Save Log Entry</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="adminAuthModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-lock"></i> Admin Authorization</h3>
+        <button style="background:none; border:none; color:white; cursor:pointer;" onclick="closeModal('adminAuthModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.875rem; margin-bottom: 1rem;">Enter Admin Password to proceed.</p>
+        <div class="form-group">
+          <label>Admin Password</label>
+          <div class="input-pin-wrapper">
+            <input type="password" id="adminAuthPasswordInput" autofocus />
+            <button type="button" class="toggle-pin-btn" onclick="togglePinVisibility('adminAuthPasswordInput', this)"><i class="fa-solid fa-eye"></i></button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('adminAuthModal')">Cancel</button>
+        <button class="btn btn-accent" onclick="verifyAdminAuth()">Authorize</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAFF PIN PROMPT MODAL FOR CHECK-IN / CHECK-OUT PROTECTION -->
+  <div class="modal-overlay" id="staffPinModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="staffPinModalTitle"><i class="fa-solid fa-user-shield"></i> Staff PIN Verification</h3>
+        <button style="background:none; border:none; color:white; cursor:pointer;" onclick="closeModal('staffPinModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.875rem; margin-bottom: 1rem;" id="staffPinModalSubtext">Enter current staff PIN to authorize this action.</p>
+        <div class="form-group">
+          <label>Staff Security PIN</label>
+          <div class="input-pin-wrapper">
+            <input type="password" id="staffActionPinInput" maxlength="4" placeholder="Enter PIN" autofocus />
+            <button type="button" class="toggle-pin-btn" onclick="togglePinVisibility('staffActionPinInput', this)"><i class="fa-solid fa-eye"></i></button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('staffPinModal')">Cancel</button>
+        <button class="btn btn-success" onclick="verifyStaffActionPin()">Verify PIN</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="staffSignOutModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-right-from-bracket"></i> Staff Sign-Out Security</h3>
+        <button style="background:none; border:none; color:white; cursor:pointer;" onclick="closeModal('staffSignOutModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.875rem; margin-bottom: 1rem;" id="signOutModalMessage">Enter staff PIN to end shift.</p>
+        <div class="form-group">
+          <label>Staff Security PIN</label>
+          <div class="input-pin-wrapper">
+            <input type="password" id="staffSignOutPinInput" maxlength="4" placeholder="Enter PIN" autofocus />
+            <button type="button" class="toggle-pin-btn" onclick="togglePinVisibility('staffSignOutPinInput', this)"><i class="fa-solid fa-eye"></i></button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('staffSignOutModal')">Cancel</button>
+        <button class="btn btn-danger" onclick="verifyStaffSignOut()">Sign Out</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="addRoomModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="roomModalTitle"><i class="fa-solid fa-plus"></i> Add New Room</h3>
+        <button style="background:none; border:none; color:white; cursor:pointer;" onclick="closeModal('addRoomModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="handleCreateOrUpdateRoom(event)">
+        <input type="hidden" id="editRoomId" value="" />
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Room Number</label>
+            <input type="number" id="newRoomNumber" min="1" required placeholder="e.g. 101" />
+          </div>
+          <div class="form-group">
+            <label>Room Category Name</label>
+            <input type="text" id="newRoomName" required placeholder="e.g. Deluxe Suite / Standard Room" />
+          </div>
+          <div class="form-group">
+            <label>Price per Night</label>
+            <input type="number" step="0.01" id="newRoomPrice" required placeholder="e.g. 150.00" />
+          </div>
+          <div class="form-group">
+            <label>Amenities</label>
+            <div class="checkbox-grid">
+              <label class="checkbox-item"><input type="checkbox" value="AC" class="room-amenity-cb" /> Air Conditioning</label>
+              <label class="checkbox-item"><input type="checkbox" value="Bathroom" class="room-amenity-cb" checked /> Private Bathroom</label>
+              <label class="checkbox-item"><input type="checkbox" value="TV" class="room-amenity-cb" /> Smart TV</label>
+              <label class="checkbox-item"><input type="checkbox" value="Wi-Fi" class="room-amenity-cb" /> Wi-Fi</label>
+              <label class="checkbox-item"><input type="checkbox" value="Bathroom" class="room-amenity-cb" /> Shared Bathroom</label>
+              <label class="checkbox-item"><input type="checkbox" value="Toilet" class="room-amenity-cb" /> Toilet</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('addRoomModal')">Cancel</button>
+          <button type="submit" class="btn btn-accent">Save Room</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="addStaffModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="staffModalTitle"><i class="fa-solid fa-user-plus"></i> Register New Staff Member</h3>
+        <button style="background:none; border:none; color:white; cursor:pointer;" onclick="closeModal('addStaffModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="handleCreateOrUpdateStaff(event)">
+        <input type="hidden" id="editStaffId" value="" />
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="newStaffName" required placeholder="e.g. Kwesi Mensah" />
+          </div>
+          <div class="form-group">
+            <label>Role</label>
+            <input type="text" id="newStaffRole" required placeholder="e.g. Receptionist / Manager" />
+          </div>
+          <div class="form-group">
+            <label>Phone Number</label>
+            <input type="text" id="newStaffPhone" required placeholder="024XXXXXXX" />
+          </div>
+          <div class="form-group">
+            <label>Security PIN (4 digits)</label>
+            <div class="input-pin-wrapper">
+              <input type="password" id="newStaffPin" maxlength="4" required placeholder="1234" />
+              <button type="button" class="toggle-pin-btn" onclick="togglePinVisibility('newStaffPin', this)"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('addStaffModal')">Cancel</button>
+          <button type="submit" class="btn btn-accent">Save Employee</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="checkInModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalCheckInTitle">Guest Check-In</h3>
+        <button style="background:none; border:none; color:white; cursor:pointer;" onclick="closeModal('checkInModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="confirmCheckIn(event)">
+        <div class="modal-body">
+          <input type="hidden" id="checkInRoomId" />
+          <div class="form-group">
+            <label>Guest Full Name</label>
+            <input type="text" id="guestName" required placeholder="e.g. John Doe" />
+          </div>
+          <div class="form-group">
+            <label>Guest Phone Number</label>
+            <input type="text" id="guestPhone" placeholder="050XXXXXXX" />
+          </div>
+          <div class="form-group">
+            <label>Nights Staying</label>
+            <input type="number" id="stayNights" value="1" min="1" required onchange="calculateCheckInPrice()" oninput="calculateCheckInPrice()" />
+          </div>
+          <div class="form-group">
+            <label>Payment Method</label>
+            <select id="paymentMethod" required onchange="toggleMomoNetworkSelect(this.value)">
+              <option value="Cash">Physical Cash</option>
+              <option value="MoMo">Mobile Money (MoMo)</option>
+            </select>
+          </div>
+          <div class="form-group" id="momoNetworkGroup" style="display: none;">
+            <label>Mobile Money Network Provider</label>
+            <select id="momoNetwork">
+              <option value="MTN MoMo">MTN MoMo</option>
+              <option value="Telecel">Telecel</option>
+              <option value="AirtelTigo">AirtelTigo</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Total Payment Required (<span class="currSymbol">GH₵</span>)</label>
+            <input type="text" id="totalCheckInPrice" readonly style="font-weight:bold; font-size: 1.1rem; color: var(--accent);" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('checkInModal')">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="fa-solid fa-check"></i> Complete Check-In</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_FIREBASE_CONFIG = {
+      apiKey: "AIzaSyB_Public_GuestHouse_App_Key_2026",
+      authDomain: "edico-guesthouse-app.firebaseapp.com",
+      databaseURL: "https://iddico-guest-house-management-default-rtdb.firebaseio.com/",
+      projectId: "edico-guesthouse-app",
+      storageBucket: "edico-guesthouse-app.appspot.com",
+      messagingSenderId: "102938475612",
+      appId: "1:102938475612:web:a1b2c3d4e5f67890"
+    };
+
+    let db = null;
+    let activeRootRef = null;
+    let syncKey = localStorage.getItem('edico_sync_key') || 'EDICO-DEMO-2026';
+    let adminPassword = localStorage.getItem('edico_admin_pass') || 'admin123';
+    let recoverySecret = localStorage.getItem('edico_recovery_secret') || 'admin123';
+    let currentCurrency = localStorage.getItem('edico_currency') || 'GH₵';
+    let houseName = localStorage.getItem('edico_house_name') || 'Edico Guest House';
+    let logoData = localStorage.getItem('edico_app_logo') || '';
+    let isDarkTheme = localStorage.getItem('edico_dark_theme') === 'true';
+    let backupSchedule = localStorage.getItem('edico_backup_schedule') || 'none';
+    let lastBackupTime = parseInt(localStorage.getItem('edico_last_backup_time') || '0');
+    let pendingAdminAction = null;
+    let pendingStaffAction = null;
+    let syncKeyVisible = false;
+
+    let selectedRoomForCheckIn = null;
+    let currentFilter = 'all';
+
+    // Seed Data
+    const seedRooms = {
+      "room_101": { id: "room_101", number: 101, name: "Standard Room 101", price: 100, status: "available", amenities: ["AC", "Bathroom", "Wi-Fi"] },
+      "room_102": { id: "room_102", number: 102, name: "Standard Room 102", price: 120, status: "available", amenities: ["AC", "Bathroom", "Wi-Fi", "TV"] },
+      "room_103": { id: "room_103", number: 103, name: "Deluxe Suite 103", price: 180, status: "available", amenities: ["AC", "Bathroom", "TV", "Wi-Fi", "Fridge"] },
+      "room_104": { id: "room_104", number: 104, name: "Executive Suite 104", price: 250, status: "available", amenities: ["AC", "Bathroom", "TV", "Wi-Fi", "Jacuzzi"] },
+      "room_105": { id: "room_105", number: 105, name: "Presidential Penthouse 105", price: 400, status: "available", amenities: ["AC", "Bathroom", "TV", "Wi-Fi", "Fridge", "Jacuzzi"] }
+    };
+
+    const seedStaff = {
+      "s1": { id: "s1", name: "John Doe", role: "Front Desk Manager", phone: "0241234567", pin: "1234" },
+      "s2": { id: "s2", name: "Mary Mensah", role: "Receptionist", phone: "0209876543", pin: "2345" },
+      "s3": { id: "s3", name: "Samuel Osei", role: "Shift Supervisor", phone: "0551122334", pin: "3456" },
+      "s4": { id: "s4", name: "Abena Appiah", role: "Evening Clerk", phone: "0275566778", pin: "4567" },
+      "s5": { id: "s5", name: "Kwame Nkrumah", role: "Night Shift Operations", phone: "0509988776", pin: "5678" }
+    };
+
+    // State Holders
+    let localRooms = JSON.parse(localStorage.getItem('edico_local_rooms')) || seedRooms;
+    let localStaff = JSON.parse(localStorage.getItem('edico_local_staff')) || seedStaff;
+    let activeShift = JSON.parse(localStorage.getItem('edico_local_shift')) || null;
+    let finances = JSON.parse(localStorage.getItem('edico_local_finances')) || { cash: 0, momo: 0, total: 0 };
+    let localTransactions = JSON.parse(localStorage.getItem('edico_local_transactions')) || [];
+    let localNotifications = JSON.parse(localStorage.getItem('edico_local_notifs')) || [];
+    let connectedSyncList = JSON.parse(localStorage.getItem('edico_connected_syncs')) || [syncKey];
+
+    window.onload = function() {
+      startClock();
+      applyThemeState();
+      
+      renderRooms();
+      renderStaff();
+      renderShiftState();
+      updateStats();
+      renderTransactions();
+      renderNotifications();
+      loadSettings();
+      renderConnectedSyncList();
+      updateSyncKeyDisplay();
+      populateLoginStaffSelect();
+
+      initFirebase();
+
+      document.addEventListener('click', function(e) {
+        const notifWrapper = document.getElementById('notifWrapper');
+        if (notifWrapper && !notifWrapper.contains(e.target)) {
+          document.getElementById('notifDropdown').classList.remove('active');
+        }
+      });
+
+      checkScheduledBackupAlert();
+    };
+
+    function startClock() {
+      function updateTime() {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        const dateStr = now.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        
+        const clockEl = document.getElementById('largeDigitalClock');
+        const dateEl = document.getElementById('largeDigitalDate');
+        if (clockEl) clockEl.innerText = timeStr;
+        if (dateEl) dateEl.innerText = dateStr;
+      }
+      updateTime();
+      setInterval(updateTime, 1000);
+    }
+
+    function unlockSystemMaster(e) {
+      e.preventDefault();
+      const inputPass = document.getElementById('gatePasswordInput').value;
+      if (inputPass === adminPassword) {
+        document.getElementById('masterAuthScreen').style.display = 'none';
+        document.getElementById('gatePasswordInput').value = '';
+      } else {
+        showPopupModal("Authentication Error", "Incorrect Admin Password!", null);
+      }
+    }
+
+    function unlockSystemStaff(e) {
+      e.preventDefault();
+      const staffId = document.getElementById('loginStaffSelect').value;
+      const enteredPin = document.getElementById('loginStaffPin').value.trim();
+
+      const employee = localStaff[staffId];
+      if (!employee) return showPopupModal("Selection Error", "Please select a valid staff member.", null);
+      if (employee.pin !== enteredPin) return showPopupModal("Authentication Error", "Incorrect Staff PIN!", null);
+
+      const shiftData = { staffId: employee.id, staffName: employee.name, role: employee.role, startTime: new Date().toLocaleTimeString() };
+      activeShift = shiftData;
+      saveLocalStorage();
+
+      if (db && syncKey !== 'OFFLINE-LOCAL') {
+        db.ref(`properties/${syncKey}/shift`).set(shiftData);
+      }
+
+      addNotification(`Shift Started via Login: ${employee.name}`);
+      renderShiftState();
+      renderStaff();
+
+      document.getElementById('masterAuthScreen').style.display = 'none';
+      document.getElementById('loginStaffPin').value = '';
+    }
+
+    function logoutSystem() {
+      showPopupModal("Logout Confirmation", "Are you sure you want to log out and return to the entry screen?", () => {
+        document.getElementById('masterAuthScreen').style.display = 'flex';
+        document.getElementById('gatePasswordInput').value = '';
+      });
+    }
+
+    function toggleAuthMode() {
+      const adminForm = document.getElementById('adminLoginForm');
+      const staffForm = document.getElementById('staffLoginForm');
+      const toggleBtn = document.getElementById('toggleLoginModeBtn');
+      const subtitle = document.getElementById('authSubtitleText');
+
+      if (adminForm.style.display !== 'none') {
+        adminForm.style.display = 'none';
+        staffForm.style.display = 'block';
+        toggleBtn.innerHTML = '<i class="fa-solid fa-user-shield"></i> Admin Login';
+        subtitle.innerText = 'Select Employee & PIN to Start Shift';
+      } else {
+        adminForm.style.display = 'block';
+        staffForm.style.display = 'none';
+        toggleBtn.innerHTML = '<i class="fa-solid fa-users-gear"></i> Staff Login';
+        subtitle.innerText = 'Enter Admin Password to Access System';
+      }
+    }
+
+    function populateLoginStaffSelect() {
+      const select = document.getElementById('loginStaffSelect');
+      if (!select) return;
+      select.innerHTML = '<option value="">-- Choose Employee --</option>';
+      Object.keys(localStaff).forEach(id => {
+        const s = localStaff[id];
+        if (s) {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.innerText = `${s.name} (${s.role})`;
+          select.appendChild(opt);
+        }
+      });
+    }
+
+    function openForgotPassModal() {
+      document.getElementById('recoverySecretInput').value = '';
+      document.getElementById('forgotPassModal').classList.add('active');
+    }
+
+    function verifyPasswordRecovery() {
+      const enteredSecret = document.getElementById('recoverySecretInput').value.trim();
+
+      if (enteredSecret !== "" && enteredSecret === recoverySecret) {
+        closeModal('forgotPassModal');
+        showPopupModal("Admin Password Recovered", `Security Verification Successful! Your Admin Password is: ${adminPassword}`, () => {
+          document.getElementById('masterAuthScreen').style.display = 'none';
+        });
+      } else {
+        showPopupModal("Recovery Failed", "Invalid Secret Word or PIN. Recovery denied.", null);
+      }
+    }
+
+    function toggleDarkTheme() {
+      isDarkTheme = !isDarkTheme;
+      localStorage.setItem('edico_dark_theme', isDarkTheme);
+      applyThemeState();
+    }
+
+    function applyThemeState() {
+      const themeIcon = document.getElementById('themeIcon');
+      const themeBtnText = document.getElementById('themeBtnText');
+      if (isDarkTheme) {
+        document.body.classList.add('dark-theme');
+        if (themeIcon) themeIcon.className = "fa-solid fa-sun";
+        if (themeBtnText) themeBtnText.innerText = "Light Mode";
+      } else {
+        document.body.classList.remove('dark-theme');
+        if (themeIcon) themeIcon.className = "fa-solid fa-moon";
+        if (themeBtnText) themeBtnText.innerText = "Dark Mode";
+      }
+    }
+
+    function openManualLogModal() {
+      document.getElementById('manualLogRoom').value = '';
+      document.getElementById('manualLogGuest').value = '';
+      document.getElementById('manualLogAmount').value = '';
+      document.getElementById('manualLogPayment').value = 'Cash';
+      toggleManualMomoNetwork('Cash');
+      document.getElementById('manualLogModal').classList.add('active');
+    }
+
+    function toggleManualMomoNetwork(val) {
+      document.getElementById('manualMomoNetGroup').style.display = (val === 'MoMo') ? 'block' : 'none';
+    }
+
+    function handleManualLogSubmit(e) {
+      e.preventDefault();
+      const type = document.getElementById('manualLogType').value;
+      const room = document.getElementById('manualLogRoom').value.trim() || 'N/A';
+      const guest = document.getElementById('manualLogGuest').value.trim();
+      const basePay = document.getElementById('manualLogPayment').value;
+      const momoNet = document.getElementById('manualMomoNetwork').value;
+      const amount = parseFloat(document.getElementById('manualLogAmount').value) || 0;
+
+      const finalPaymentMethod = (basePay === 'MoMo') ? `MoMo (${momoNet})` : 'Cash';
+      const timestamp = new Date().toLocaleString();
+
+      const transactionRecord = {
+        timestamp,
+        type,
+        roomNumber: room,
+        guestName: guest,
+        attendant: activeShift ? activeShift.staffName : "Admin/Staff",
+        paymentMethod: finalPaymentMethod,
+        amount
+      };
+
+      if (basePay === 'Cash') finances.cash = (parseFloat(finances.cash) || 0) + amount;
+      else finances.momo = (parseFloat(finances.momo) || 0) + amount;
+      finances.total = (parseFloat(finances.cash) || 0) + (parseFloat(finances.momo) || 0);
+
+      localTransactions.push(transactionRecord);
+      saveLocalStorage();
+
+      if (db && syncKey !== 'OFFLINE-LOCAL') {
+        db.ref(`properties/${syncKey}/finances`).set(finances);
+        db.ref(`properties/${syncKey}/transactions`).push(transactionRecord);
+      }
+
+      addNotification(`Manual Financial Log added: ${guest} (${finalPaymentMethod})`);
+      updateStats();
+      renderTransactions();
+      closeModal('manualLogModal');
+      showPopupModal("Log Recorded", "Manual financial entry recorded successfully.", null);
+    }
+
+    function exportSystemBackup() {
+      const backupData = {
+        houseName,
+        currentCurrency,
+        rooms: localRooms,
+        staff: localStaff,
+        finances,
+        transactions: localTransactions,
+        notifications: localNotifications,
+        exportDate: new Date().toISOString()
+      };
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `Backup_${houseName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+
+      lastBackupTime = Date.now();
+      localStorage.setItem('edico_last_backup_time', lastBackupTime.toString());
+      updateBackupScheduleStatusText();
+      showPopupModal("Backup Successful", "System data backup file generated and downloaded.", null);
+    }
+
+    function importSystemBackup(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        try {
+          const imported = JSON.parse(event.target.result);
+          if (imported.rooms && imported.staff) {
+            localRooms = imported.rooms;
+            localStaff = imported.staff;
+            if (imported.finances) finances = imported.finances;
+            if (imported.transactions) localTransactions = imported.transactions;
+            if (imported.notifications) localNotifications = imported.notifications;
+            if (imported.houseName) {
+              houseName = imported.houseName;
+              localStorage.setItem('edico_house_name', houseName);
+            }
+            if (imported.currentCurrency) {
+              currentCurrency = imported.currentCurrency;
+              localStorage.setItem('edico_currency', currentCurrency);
+            }
+
+            saveLocalStorage();
+
+            if (db && syncKey !== 'OFFLINE-LOCAL') {
+              const rootRef = db.ref(`properties/${syncKey}`);
+              rootRef.child('rooms').set(localRooms);
+              rootRef.child('staff').set(localStaff);
+              rootRef.child('finances').set(finances);
+              rootRef.child('transactions').set(localTransactions);
+              rootRef.child('notifications').set(localNotifications);
+            }
+
+            loadSettings();
+            renderRooms();
+            renderStaff();
+            updateStats();
+            renderTransactions();
+            renderNotifications();
+
+            showPopupModal("Import Successful", "Data successfully restored from backup file!", null);
+          } else {
+            showPopupModal("Import Error", "Invalid backup file format.", null);
+          }
+        } catch (err) {
+          showPopupModal("Import Error", "Failed to parse JSON file.", null);
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    }
+
+    function updateBackupScheduleSetting() {
+      backupSchedule = document.getElementById('settingBackupSchedule').value;
+      localStorage.setItem('edico_backup_schedule', backupSchedule);
+      updateBackupScheduleStatusText();
+    }
+
+    function updateBackupScheduleStatusText() {
+      const statusEl = document.getElementById('backupScheduleStatus');
+      if (!statusEl) return;
+      if (backupSchedule === 'none') {
+        statusEl.innerText = "Backup Schedule Status: Disabled";
+      } else {
+        const lastStr = lastBackupTime ? new Date(lastBackupTime).toLocaleString() : 'Never';
+        statusEl.innerText = `Backup Schedule: ${backupSchedule.toUpperCase()} (Last backup: ${lastStr})`;
+      }
+    }
+
+    function checkScheduledBackupAlert() {
+      if (backupSchedule === 'none') return;
+
+      const now = Date.now();
+      let requiredInterval = 0;
+
+      if (backupSchedule === 'daily') requiredInterval = 24 * 60 * 60 * 1000;
+      else if (backupSchedule === 'monthly') requiredInterval = 30 * 24 * 60 * 60 * 1000;
+      else if (backupSchedule === 'yearly') requiredInterval = 365 * 24 * 60 * 60 * 1000;
+
+      if (now - lastBackupTime >= requiredInterval) {
+        setTimeout(() => {
+          showPopupModal("Backup Due Reminder", `It is time for your scheduled (${backupSchedule.toUpperCase()}) system backup. Please export a backup copy to preserve your records.`, () => {
+            exportSystemBackup();
+          });
+        }, 1200);
+      }
+    }
+
+    function sanitizeObjectData(data) {
+      if (!data) return null;
+      const obj = {};
+      if (Array.isArray(data)) {
+        data.forEach((item, idx) => { if (item) obj[item.id || ('id_' + idx)] = item; });
+      } else if (typeof data === 'object') {
+        Object.keys(data).forEach(key => { if (data[key]) obj[key] = data[key]; });
+      }
+      return obj;
+    }
+
+    function initFirebase() {
+      try {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(DEFAULT_FIREBASE_CONFIG);
+        }
+        db = firebase.database();
+        document.getElementById('cloudStatusDot').classList.remove('offline');
+        document.getElementById('cloudStatusText').innerText = "Cloud Synced";
+        bindDatabaseListeners();
+      } catch (err) {
+        document.getElementById('cloudStatusDot').classList.add('offline');
+        document.getElementById('cloudStatusText').innerText = "Local Mode";
+      }
+    }
+
+    function bindDatabaseListeners() {
+      updateSyncKeyDisplay();
+      document.getElementById('syncKeyInput').value = syncKey;
+
+      if (activeRootRef) activeRootRef.off();
+
+      if (!syncKey || syncKey === 'OFFLINE-LOCAL') {
+        document.getElementById('cloudStatusDot').classList.add('offline');
+        document.getElementById('cloudStatusText').innerText = "Disconnected";
+        return;
+      }
+
+      activeRootRef = db.ref(`properties/${syncKey}`);
+
+      activeRootRef.child('rooms').on('value', snapshot => {
+        const val = snapshot.val();
+        if (val === null) {
+          activeRootRef.child('rooms').set(seedRooms);
+          localRooms = seedRooms;
+        } else {
+          localRooms = sanitizeObjectData(val) || {};
+        }
+        saveLocalStorage();
+        renderRooms();
+        updateStats();
+      });
+
+      activeRootRef.child('staff').on('value', snapshot => {
+        const val = snapshot.val();
+        if (val === null) {
+          activeRootRef.child('staff').set(seedStaff);
+          localStaff = seedStaff;
+        } else {
+          localStaff = sanitizeObjectData(val) || {};
+        }
+        saveLocalStorage();
+        renderStaff();
+        populateLoginStaffSelect();
+      });
+
+      activeRootRef.child('shift').on('value', snapshot => {
+        activeShift = snapshot.val();
+        saveLocalStorage();
+        renderShiftState();
+        renderStaff();
+      });
+
+      activeRootRef.child('finances').on('value', snapshot => {
+        finances = snapshot.val() || { cash: 0, momo: 0, total: 0 };
+        saveLocalStorage();
+        updateStats();
+      });
+
+      activeRootRef.child('transactions').on('value', snapshot => {
+        const data = snapshot.val();
+        localTransactions = data ? Object.values(data).filter(Boolean) : [];
+        saveLocalStorage();
+        renderTransactions();
+      });
+
+      activeRootRef.child('notifications').on('value', snapshot => {
+        const data = snapshot.val();
+        localNotifications = data ? Object.values(data).filter(Boolean) : [];
+        renderNotifications();
+      });
+
+      activeRootRef.child('connected_keys').on('value', snapshot => {
+        const remoteKeys = snapshot.val();
+        if (remoteKeys && Array.isArray(remoteKeys)) {
+          connectedSyncList = Array.from(new Set([...connectedSyncList, ...remoteKeys]));
+          saveLocalStorage();
+          renderConnectedSyncList();
+        }
+      });
+    }
+
+    function saveLocalStorage() {
+      localStorage.setItem('edico_local_rooms', JSON.stringify(localRooms));
+      localStorage.setItem('edico_local_staff', JSON.stringify(localStaff));
+      localStorage.setItem('edico_local_shift', JSON.stringify(activeShift));
+      localStorage.setItem('edico_local_finances', JSON.stringify(finances));
+      localStorage.setItem('edico_local_transactions', JSON.stringify(localTransactions));
+      localStorage.setItem('edico_local_notifs', JSON.stringify(localNotifications));
+      localStorage.setItem('edico_connected_syncs', JSON.stringify(connectedSyncList));
+    }
+
+    function toggleSyncKeyVisibility() {
+      if (syncKeyVisible) {
+        syncKeyVisible = false;
+        updateSyncKeyDisplay();
+      } else {
+        promptAdminAuth('revealSyncKey');
+      }
+    }
+
+    function updateSyncKeyDisplay() {
+      const el = document.getElementById('headerSyncKey');
+      const icon = document.getElementById('syncKeyEyeIcon');
+      if (!el) return;
+      if (syncKeyVisible) {
+        el.innerText = syncKey;
+        if (icon) icon.className = "fa-solid fa-eye-slash text-muted";
+      } else {
+        el.innerText = "••••••••";
+        if (icon) icon.className = "fa-solid fa-eye text-muted";
+      }
+    }
+
+    function addNotification(message) {
+      const notif = {
+        id: Date.now().toString(),
+        message: message,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        read: false
+      };
+
+      localNotifications.unshift(notif);
+      if (db && syncKey !== 'OFFLINE-LOCAL') {
+        db.ref(`properties/${syncKey}/notifications`).set(localNotifications);
+      } else {
+        saveLocalStorage();
+      }
+      renderNotifications();
+    }
+
+    function renderNotifications() {
+      const list = document.getElementById('notifList');
+      const badge = document.getElementById('notifBadge');
+      if (!list) return;
+
+      const unreadCount = localNotifications.filter(n => n && !n.read).length;
+      if (unreadCount > 0) {
+        badge.innerText = unreadCount;
+        badge.style.display = 'block';
+      } else {
+        badge.style.display = 'none';
+      }
+
+      if (!localNotifications.length) {
+        list.innerHTML = '<div class="notif-item" style="text-align:center; color:var(--text-muted);">No activity recorded yet.</div>';
+        return;
+      }
+
+      list.innerHTML = '';
+      localNotifications.forEach((n, idx) => {
+        if (!n) return;
+        const item = document.createElement('div');
+        item.className = `notif-item ${!n.read ? 'unread' : ''}`;
+        item.onclick = () => markNotificationRead(idx);
+        item.innerHTML = `<div>${n.message}</div><span class="notif-time">${n.time}</span>`;
+        list.appendChild(item);
+      });
+    }
+
+    function toggleNotifications(e) {
+      if (e) e.stopPropagation();
+      document.getElementById('notifDropdown').classList.toggle('active');
+    }
+
+    function markNotificationRead(index) {
+      if (localNotifications[index]) {
+        localNotifications[index].read = true;
+        if (db && syncKey !== 'OFFLINE-LOCAL') db.ref(`properties/${syncKey}/notifications`).set(localNotifications);
+        else saveLocalStorage();
+        renderNotifications();
+      }
+    }
+
+    function markAllNotificationsRead() {
+      localNotifications.forEach(n => { if (n) n.read = true; });
+      if (db && syncKey !== 'OFFLINE-LOCAL') db.ref(`properties/${syncKey}/notifications`).set(localNotifications);
+      else saveLocalStorage();
+      renderNotifications();
+    }
+
+    function showPopupModal(title, message, onProceed) {
+      document.getElementById('popupModalTitle').innerHTML = `<i class="fa-solid fa-circle-info"></i> ${title}`;
+      document.getElementById('popupModalMessage').innerText = message;
+      
+      const proceedBtn = document.getElementById('popupModalProceedBtn');
+      const newBtn = proceedBtn.cloneNode(true);
+      proceedBtn.parentNode.replaceChild(newBtn, proceedBtn);
+      
+      newBtn.onclick = function() {
+        closeModal('popupModal');
+        if (onProceed) onProceed();
+      };
+      
+      document.getElementById('popupModal').classList.add('active');
+    }
+
+    function promptAdminAuth(action, payload = null) {
+      pendingAdminAction = { action, payload };
+      document.getElementById('adminAuthPasswordInput').value = '';
+      document.getElementById('adminAuthModal').classList.add('active');
+    }
+
+    function verifyAdminAuth() {
+      const pass = document.getElementById('adminAuthPasswordInput').value;
+      if (pass !== adminPassword) return showPopupModal("Authentication Failed", "Invalid Admin Password!", null);
+
+      closeModal('adminAuthModal');
+      if (!pendingAdminAction) return;
+
+      const { action, payload } = pendingAdminAction;
+      if (action === 'addRoom') openAddRoomModal();
+      else if (action === 'editRoom') openEditRoomModal(payload);
+      else if (action === 'deleteRoom') deleteRoom(payload);
+      else if (action === 'addStaff') openAddStaffModal();
+      else if (action === 'editStaff') openEditStaffModal(payload);
+      else if (action === 'deleteStaff') deleteStaff(payload);
+      else if (action === 'settingsTab') switchTab('settingsTab', document.querySelectorAll('.nav-btn')[3]);
+      else if (action === 'connectSync') connectSyncKey(payload);
+      else if (action === 'disconnectSync') disconnectSyncKey();
+      else if (action === 'toggleMaintenance') toggleRoomMaintenance(payload);
+      else if (action === 'revealSyncKey') {
+        syncKeyVisible = true;
+        updateSyncKeyDisplay();
+      } else if (action === 'removeSyncKey') removeSyncKey(payload);
+
+      pendingAdminAction = null;
+    }
+
+    function promptStaffPinAuth(action, payload = null) {
+      pendingStaffAction = { action, payload };
+      document.getElementById('staffActionPinInput').value = '';
+      document.getElementById('staffPinModal').classList.add('active');
+    }
+
+    function verifyStaffActionPin() {
+      const enteredPin = document.getElementById('staffActionPinInput').value.trim();
+
+      let authorized = false;
+      if (activeShift && localStaff[activeShift.staffId] && localStaff[activeShift.staffId].pin === enteredPin) {
+        authorized = true;
+      } else {
+        authorized = Object.values(localStaff).some(s => s && s.pin === enteredPin);
+      }
+
+      if (!authorized) {
+        return showPopupModal("Authentication Failed", "Invalid Staff Security PIN!", null);
+      }
+
+      closeModal('staffPinModal');
+      if (!pendingStaffAction) return;
+
+      const { action, payload } = pendingStaffAction;
+      if (action === 'openCheckIn') openCheckInModal(payload);
+      else if (action === 'checkOut') checkOutRoom(payload);
+
+      pendingStaffAction = null;
+    }
+
+    function filterRooms(type, btn) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = type;
+      renderRooms();
+    }
+
+    function renderRooms() {
+      const container = document.getElementById('roomsContainer');
+      const query = (document.getElementById('roomSearchInput')?.value || '').toLowerCase();
+      if (!container) return;
+      container.innerHTML = '';
+
+      const roomKeys = Object.keys(localRooms).filter(k => localRooms[k]).sort((a,b) => (localRooms[a].number || 0) - (localRooms[b].number || 0));
+
+      roomKeys.forEach(id => {
+        const room = localRooms[id];
+        if (!room) return;
+
+        const isOccupied = room.status === 'occupied';
+        const isMaintenance = room.status === 'maintenance';
+
+        if (currentFilter === 'available' && room.status !== 'available') return;
+        if (currentFilter === 'occupied' && !isOccupied) return;
+        if (currentFilter === 'maintenance' && !isMaintenance) return;
+
+        if (query && !room.number?.toString().includes(query) && !(room.name || '').toLowerCase().includes(query)) return;
+
+        const card = document.createElement('div');
+        card.className = `room-card ${isOccupied ? 'occupied' : isMaintenance ? 'maintenance' : 'available'}`;
+        
+        let amenitiesHtml = (room.amenities || []).map(a => `<span class="amenity-chip"><i class="fa-solid fa-check text-success"></i> ${a}</span>`).join('');
+
+        card.innerHTML = `
+          <div>
+            <div class="room-card-header">
+              <div>
+                <div class="room-number-tag">Room ${room.number}</div>
+                <div class="room-type">${room.name || 'Standard'}</div>
+              </div>
+              <div style="display:flex; gap:0.25rem;">
+                <button class="btn btn-outline btn-sm" onclick="promptAdminAuth('toggleMaintenance', '${id}')" title="Maintenance Toggle"><i class="fa-solid fa-screwdriver-wrench"></i></button>
+                <button class="btn btn-outline btn-sm" onclick="promptAdminAuth('editRoom', '${id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn btn-outline btn-sm" style="color:var(--danger);" onclick="promptAdminAuth('deleteRoom', '${id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </div>
+
+            <div class="amenities-list">${amenitiesHtml}</div>
+            <div class="room-price-tag">${currentCurrency} ${parseFloat(room.price || 0).toFixed(2)} / night</div>
+
+            ${isOccupied ? `
+              <div class="guest-details-box">
+                <div><strong>Guest:</strong> ${room.guestName}</div>
+                <div><strong>Phone:</strong> ${room.guestPhone || 'N/A'}</div>
+                <div><strong>Nights:</strong> ${room.nights} | <strong>Paid:</strong> ${currentCurrency} ${parseFloat(room.totalPrice || 0).toFixed(2)} (${room.paymentMethod})</div>
+                <div><strong>In:</strong> ${room.checkInTime}</div>
+              </div>
+            ` : isMaintenance ? `
+              <div style="font-size:0.825rem; color:var(--warning); margin-bottom:1rem; font-weight:bold;"><i class="fa-solid fa-triangle-exclamation"></i> Out of Service for Maintenance</div>
+            ` : '<div style="font-size:0.825rem; color:var(--text-muted); margin-bottom:1rem;">Ready for immediate guest check-in</div>'}
+          </div>
+
+          <div>
+            ${isOccupied ? 
+              `<button class="btn btn-danger" style="width:100%;" onclick="promptStaffPinAuth('checkOut', '${id}')"><i class="fa-solid fa-right-from-bracket"></i> Check Out Guest</button>` :
+              `<button class="btn btn-success" style="width:100%;" ${isMaintenance ? 'disabled style="opacity:0.5;"' : ''} onclick="promptStaffPinAuth('openCheckIn', '${id}')"><i class="fa-solid fa-key"></i> Check In Room</button>`
+            }
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function toggleRoomMaintenance(roomId) {
+      const room = localRooms[roomId];
+      if (!room) return;
+
+      const newStatus = room.status === 'maintenance' ? 'available' : 'maintenance';
+      room.status = newStatus;
+
+      localRooms[roomId] = room;
+      saveLocalStorage();
+
+      if (db && syncKey !== 'OFFLINE-LOCAL') {
+        db.ref(`properties/${syncKey}/rooms/${roomId}`).set(room);
+      }
+
+      addNotification(`Room ${room.number} set to ${newStatus}.`);
+      renderRooms();
+      updateStats();
+    }
+
+    function openAddRoomModal() {
+      document.getElementById('editRoomId').value = "";
+      document.getElementById('roomModalTitle').innerHTML = `<i class="fa-solid fa-plus"></i> Add New Room`;
+      document.getElementById('newRoomNumber').value = "";
+      document.getElementById('newRoomName').value = "";
+      document.getElementById('newRoomPrice').value = "";
+      document.querySelectorAll('.room-amenity-cb').forEach(cb => cb.checked = false);
+      document.getElementById('addRoomModal').classList.add('active');
+    }
+
+    function openEditRoomModal(roomId) {
+      const room = localRooms[roomId];
+      if (!room) return;
+      document.getElementById('editRoomId').value = room.id;
+      document.getElementById('roomModalTitle').innerHTML = `<i class="fa-solid fa-pen"></i> Edit Room ${room.number}`;
+      document.getElementById('newRoomNumber').value = room.number;
+      document.getElementById('newRoomName').value = room.name;
+      document.getElementById('newRoomPrice').value = room.price;
+
+      const currentAmenities = room.amenities || [];
+      document.querySelectorAll('.room-amenity-cb').forEach(cb => cb.checked = currentAmenities.includes(cb.value));
+      document.getElementById('addRoomModal').classList.add('active');
+    }
+
+    function handleCreateOrUpdateRoom(e) {
+      e.preventDefault();
+      const editId = document.getElementById('editRoomId').value;
+      const number = parseInt(document.getElementById('newRoomNumber').value);
+      const name = document.getElementById('newRoomName').value.trim();
+      const price = parseFloat(document.getElementById('newRoomPrice').value);
+
+      if (!editId) {
+        const isDuplicate = Object.values(localRooms).some(r => r && r.number === number);
+        if (isDuplicate) return showPopupModal("Duplicate Room", `Room Number ${number} already exists!`, null);
+      }
+      
+      const amenities = [];
+      document.querySelectorAll('.room-amenity-cb:checked').forEach(cb => amenities.push(cb.value));
+
+      const id = editId ? editId : 'room_' + number;
+      const existingStatus = editId && localRooms[editId] ? localRooms[editId].status : 'available';
+
+      const newRoom = { ...(editId && localRooms[editId] ? localRooms[editId] : {}), id, number, name, price, amenities, status: existingStatus };
+
+      localRooms[id] = newRoom;
+      saveLocalStorage();
+
+      if (db && syncKey !== 'OFFLINE-LOCAL') {
+        db.ref(`properties/${syncKey}/rooms/${id}`).set(newRoom);
+      }
+
+      addNotification(`Room ${number} (${name}) was saved.`);
+      renderRooms();
+      updateStats();
+      closeModal('addRoomModal');
+    }
+
+    function deleteRoom(roomId) {
+      const room = localRooms[roomId];
+      const roomNumDisplay = room ? room.number : roomId;
+      showPopupModal("Delete Room", `Are you sure you want to permanently delete Room ${roomNumDisplay}?`, () => {
+        delete localRooms[roomId];
+        saveLocalStorage();
+
+        if (db && syncKey !== 'OFFLINE-LOCAL') {
+          db.ref(`properties/${syncKey}/rooms/${roomId}`).remove();
+        }
+
+        addNotification(`Room ${roomNumDisplay} deleted.`);
+        renderRooms();
+        updateStats();
+      });
+    }
+
+    function openCheckInModal(roomId) {
+      const room = localRooms[roomId];
+      if (!room) return;
+
+      selectedRoomForCheckIn = room;
+      document.getElementById('checkInRoomId').value = room.id;
+      document.getElementById('modalCheckInTitle').innerText = `Check In: Room ${room.number}`;
+      document.getElementById('guestName').value = '';
+      document.getElementById('guestPhone').value = '';
+      document.getElementById('stayNights').value = 1;
+      document.getElementById('paymentMethod').value = 'Cash';
+      toggleMomoNetworkSelect('Cash');
+      calculateCheckInPrice();
+      document.getElementById('checkInModal').classList.add('active');
+    }
+
+    function toggleMomoNetworkSelect(val) {
+      document.getElementById('momoNetworkGroup').style.display = (val === 'MoMo') ? 'block' : 'none';
+    }
+
+    function calculateCheckInPrice() {
+      if (!selectedRoomForCheckIn) return;
+      const nights = parseInt(document.getElementById('stayNights').value) || 1;
+      const total = nights * parseFloat(selectedRoomForCheckIn.price || 0);
+      document.getElementById('totalCheckInPrice').value = total.toFixed(2);
+    }
+
+    function confirmCheckIn(e) {
+      e.preventDefault();
+      if (!selectedRoomForCheckIn) return;
+
+      const roomId = selectedRoomForCheckIn.id;
+      const guestName = document.getElementById('guestName').value.trim();
+      const guestPhone = document.getElementById('guestPhone').value.trim();
+      const nights = parseInt(document.getElementById('stayNights').value) || 1;
+      const basePayMethod = document.getElementById('paymentMethod').value;
+      const momoNet = document.getElementById('momoNetwork').value;
+      const totalPaid = nights * parseFloat(selectedRoomForCheckIn.price || 0);
+
+      const finalPaymentMethod = (basePayMethod === 'MoMo') ? `MoMo (${momoNet})` : 'Cash';
+      const checkInTimeStamp = new Date().toLocaleString();
+
+      const updatedRoom = {
+        ...selectedRoomForCheckIn,
+        status: 'occupied',
+        guestName,
+        guestPhone,
+        nights,
+        paymentMethod: finalPaymentMethod,
+        totalPrice: totalPaid,
+        checkInTime: checkInTimeStamp
+      };
+
+      const currentCash = parseFloat(finances.cash || 0);
+      const currentMomo = parseFloat(finances.momo || 0);
+
+      if (basePayMethod === 'Cash') finances.cash = currentCash + totalPaid;
+      else finances.momo = currentMomo + totalPaid;
+      finances.total = parseFloat(finances.cash || 0) + parseFloat(finances.momo || 0);
+
+      const transactionRecord = {
+        timestamp: checkInTimeStamp,
+        type: "Check-In",
+        roomNumber: selectedRoomForCheckIn.number,
+        guestName,
+        attendant: activeShift ? activeShift.staffName : "Staff",
+        paymentMethod: finalPaymentMethod,
+        amount: totalPaid
+      };
+
+      localTransactions.push(transactionRecord);
+      localRooms[roomId] = updatedRoom;
+      saveLocalStorage();
+
+      if (db && syncKey !== 'OFFLINE-LOCAL') {
+        const rootRef = db.ref(`properties/${syncKey}`);
+        rootRef.child(`rooms/${roomId}`).set(updatedRoom);
+        rootRef.child('finances').set(finances);
+        rootRef.child('transactions').push(transactionRecord);
+      }
+
+      addNotification(`New Check-In: Room ${selectedRoomForCheckIn.number} (${guestName})`);
+      renderRooms();
+      updateStats();
+      renderTransactions();
+      
+      closeModal('checkInModal');
+      selectedRoomForCheckIn = null;
+    }
+
+    function checkOutRoom(roomId) {
+      const room = localRooms[roomId];
+      if (!room) return;
+
+      showPopupModal("Confirm Check-Out", `Process Check-Out for Room ${room.number} (${room.guestName})?`, () => {
+        const checkOutTimeStamp = new Date().toLocaleString();
+        const resetRoom = { id: room.id, number: room.number, name: room.name, price: room.price, amenities: room.amenities || [], status: 'available' };
+
+        const transactionRecord = {
+          timestamp: checkOutTimeStamp,
+          type: "Check-Out",
+          roomNumber: room.number,
+          guestName: room.guestName,
+          attendant: activeShift ? activeShift.staffName : "Staff",
+          paymentMethod: room.paymentMethod,
+          amount: 0.00
+        };
+
+        localTransactions.push(transactionRecord);
+        localRooms[roomId] = resetRoom;
+        saveLocalStorage();
+
+        if (db && syncKey !== 'OFFLINE-LOCAL') {
+          db.ref(`properties/${syncKey}/rooms/${roomId}`).set(resetRoom);
+          db.ref(`properties/${syncKey}/transactions`).push(transactionRecord);
+        }
+
+        addNotification(`Check-Out completed: Room ${room.number} (${room.guestName})`);
+        renderRooms();
+        updateStats();
+        renderTransactions();
+      });
+    }
+
+    function renderStaff() {
+      const tbody = document.getElementById('staffTableBody');
+      const select = document.getElementById('signInStaffSelect');
+      if (!tbody || !select) return;
+
+      tbody.innerHTML = '';
+      select.innerHTML = '<option value="">-- Choose Employee --</option>';
+
+      Object.keys(localStaff).forEach(id => {
+        const s = localStaff[id];
+        if (!s) return;
+        const isCurrentActive = activeShift && activeShift.staffId === id;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong class="${isCurrentActive ? 'glowing-staff' : ''}">${s.name}</strong></td>
+          <td>${s.role}</td>
+          <td>${s.phone}</td>
+          <td>${isCurrentActive ? '<span style="color:var(--success); font-weight:bold;"><i class="fa-solid fa-circle"></i> On Shift</span>' : '<span style="color:var(--text-muted)">Offline</span>'}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="promptAdminAuth('editStaff', '${id}')"><i class="fa-solid fa-pen"></i></button>
+            <button class="btn btn-outline btn-sm" style="color:var(--danger);" onclick="promptAdminAuth('deleteStaff', '${id}')"><i class="fa-solid fa-user-minus"></i></button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.innerText = `${s.name} (${s.role})`;
+        select.appendChild(opt);
+      });
+
+      populateLoginStaffSelect();
+    }
+
+    function openAddStaffModal() {
+      document.getElementById('editStaffId').value = "";
+      document.getElementById('staffModalTitle').innerHTML = `<i class="fa-solid fa-user-plus"></i> Register New Staff Member`;
+      document.getElementById('newStaffName').value = "";
+      document.getElementById('newStaffRole').value = "";
+      document.getElementById('newStaffPhone').value = "";
+      document.getElementById('newStaffPin').value = "";
+      document.getElementById('addStaffModal').classList.add('active');
+    }
+
+    function openEditStaffModal(staffId) {
+      const s = localStaff[staffId];
+      if (!s) return;
+      document.getElementById('editStaffId').value = s.id;
+      document.getElementById('staffModalTitle').innerHTML = `<i class="fa-solid fa-pen"></i> Edit Staff Details`;
+      document.getElementById('newStaffName').value = s.name;
+      document.getElementById('newStaffRole').value = s.role;
+      document.getElementById('newStaffPhone').value = s.phone;
+      document.getElementById('newStaffPin').value = s.pin;
+      document.getElementById('addStaffModal').classList.add('active');
+    }
+
+    function handleCreateOrUpdateStaff(e) {
+      e.preventDefault();
+      const editId = document.getElementById('editStaffId').value;
+      const name = document.getElementById('newStaffName').value.trim();
+      const role = document.getElementById('newStaffRole').value.trim();
+      const phone = document.getElementById('newStaffPhone').value.trim();
+      const pin = document.getElementById('newStaffPin').value.trim();
+      
+      const id = editId ? editId : 's_' + Date.now();
+      const staffObj = { id, name, role, phone, pin };
+
+      localStaff[id] = staffObj;
+      saveLocalStorage();
+
+      if (db && syncKey !== 'OFFLINE-LOCAL') {
+        db.ref(`properties/${syncKey}/staff/${id}`).set(staffObj);
+      }
+
+      addNotification(`Staff member ${name} saved.`);
+      renderStaff();
+      closeModal('addStaffModal');
+    }
+
+    function deleteStaff(staffId) {
+      showPopupModal("Delete Staff Record", "Are you sure you want to remove this employee?", () => {
+        delete localStaff[staffId];
+        saveLocalStorage();
+
+        if (db && syncKey !== 'OFFLINE-LOCAL') {
+          db.ref(`properties/${syncKey}/staff/${staffId}`).remove();
+        }
+
+        addNotification(`Employee removed.`);
+        renderStaff();
+      });
+    }
+
+    function handleStaffSignIn(e) {
+      e.preventDefault();
+      const staffId = document.getElementById('signInStaffSelect').value;
+      const enteredPin = document.getElementById('signInStaffPin').value.trim();
+
+      const employee = localStaff[staffId];
+      if (!employee) return showPopupModal("Selection Error", "Select a valid employee.", null);
+      if (employee.pin !== enteredPin) return showPopupModal("Security Alert", "Incorrect Security PIN!", null);
+
+      const shiftData = { staffId: employee.id, staffName: employee.name, role: employee.role, startTime: new Date().toLocaleTimeString() };
+
+      activeShift = shiftData;
+      saveLocalStorage();
+
+      if (db && syncKey !== 'OFFLINE-LOCAL') {
+        db.ref(`properties/${syncKey}/shift`).set(shiftData);
+      }
+
+      addNotification(`Shift Started: ${employee.name}`);
+      renderShiftState();
+      renderStaff();
+      document.getElementById('shiftSignInForm').reset();
+    }
+
+    function openStaffSignOutModal() {
+      if (!activeShift) return;
+      document.getElementById('staffSignOutPinInput').value = '';
+      document.getElementById('signOutModalMessage').innerText = `Enter PIN for ${activeShift.staffName} to end shift.`;
+      document.getElementById('staffSignOutModal').classList.add('active');
+    }
+
+    function verifyStaffSignOut() {
+      if (!activeShift) return closeModal('staffSignOutModal');
+      const enteredPin = document.getElementById('staffSignOutPinInput').value.trim();
+      const employee = localStaff[activeShift.staffId];
+
+      if (employee && employee.pin !== enteredPin) {
+        return showPopupModal("Authentication Failed", "Incorrect Staff PIN!", null);
+      }
+
+      closeModal('staffSignOutModal');
+      performStaffSignOut();
+    }
+
+    function renderShiftState() {
+      const textDisplay = document.getElementById('shiftStatusText');
+      const detailsBox = document.getElementById('activeShiftDetails');
+      const signOutBtn = document.getElementById('signOutBtn');
+
+      if (activeShift && activeShift.staffName) {
+        textDisplay.innerHTML = `<span class="glowing-staff">Active: ${activeShift.staffName}</span>`;
+        detailsBox.innerHTML = `<strong>Staff:</strong> <span class="glowing-staff">${activeShift.staffName}</span><br><strong>Role:</strong> ${activeShift.role}<br><strong>Start Time:</strong> ${activeShift.startTime}`;
+        signOutBtn.style.display = 'inline-flex';
+      } else {
+        textDisplay.innerText = 'No Staff Shift Active';
+        detailsBox.innerHTML = '<em>No employee currently signed in.</em>';
+        signOutBtn.style.display = 'none';
+      }
+    }
+
+    function performStaffSignOut() {
+      const prevName = activeShift ? activeShift.staffName : "Staff";
+      activeShift = null;
+      saveLocalStorage();
+
+      if (db && syncKey !== 'OFFLINE-LOCAL') {
+        db.ref(`properties/${syncKey}/shift`).remove();
+      }
+
+      addNotification(`Shift ended for ${prevName}.`);
+      renderShiftState();
+      renderStaff();
+    }
+
+    function updateStats() {
+      let available = 0, occupied = 0, totalRooms = 0;
+      Object.values(localRooms).forEach(r => {
+        if (!r) return;
+        totalRooms++;
+        if (r.status === 'available') available++;
+        if (r.status === 'occupied') occupied++;
+      });
+
+      document.getElementById('statAvailableCount').innerText = available;
+      const occupancyRate = totalRooms > 0 ? Math.round((occupied / totalRooms) * 100) : 0;
+      document.getElementById('statOccupancy').innerText = `${occupancyRate}%`;
+
+      const cash = parseFloat(finances.cash || 0);
+      const momo = parseFloat(finances.momo || 0);
+      const total = cash + momo;
+
+      document.getElementById('statCash').innerText = `${currentCurrency} ${cash.toFixed(2)}`;
+      document.getElementById('statMoMo').innerText = `${currentCurrency} ${momo.toFixed(2)}`;
+      document.getElementById('statTotalRev').innerText = `${currentCurrency} ${total.toFixed(2)}`;
+    }
+
+    function renderTransactions() {
+      const tbody = document.getElementById('transactionTableBody');
+      if (!tbody) return;
+      if (!localTransactions.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No activity recorded yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = '';
+      localTransactions.slice().reverse().forEach(t => {
+        if (!t) return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${t.timestamp}</td>
+          <td><span class="badge" style="background:${t.type === 'Check-In' ? '#dcfce7' : t.type === 'Check-Out' ? '#fee2e2' : '#e0e7ff'}; color:${t.type === 'Check-In' ? '#15803d' : t.type === 'Check-Out' ? '#b91c1c' : '#4338ca'}; padding:0.2rem 0.4rem; border-radius:4px; font-weight:bold;">${t.type || 'Transaction'}</span></td>
+          <td>${t.roomNumber ? 'Room ' + t.roomNumber : 'N/A'}</td>
+          <td>${t.guestName}</td>
+          <td>${t.attendant || 'System'}</td>
+          <td>${t.paymentMethod}</td>
+          <td><strong>${currentCurrency} ${parseFloat(t.amount || 0).toFixed(2)}</strong></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportTransactionsCSV() {
+      if (!localTransactions.length) return showPopupModal("Export Failed", "No records available to export.", null);
+      let csvContent = "data:text/csv;charset=utf-8,Date & Time,Type,Room,Guest Name,Attendant,Payment Method,Amount Paid\n";
+      localTransactions.forEach(t => {
+        if (t) csvContent += `"${t.timestamp}","${t.type || 'Log'}","Room ${t.roomNumber || 'N/A'}","${t.guestName}","${t.attendant || 'N/A'}","${t.paymentMethod}","${t.amount}"\n`;
+      });
+      const link = document.createElement("a");
+      link.setAttribute("href", encodeURI(csvContent));
+      link.setAttribute("download", `Check_In_Out_Report_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function printTransactionsPDF() {
+      if (!localTransactions.length) return showPopupModal("Print Failed", "No transaction records available.", null);
+      const printWindow = window.open('', '', 'height=600,width=800');
+      printWindow.document.write('<html><head><title>Check-In & Check-Out Details Report</title>');
+      printWindow.document.write('<style>body{font-family:sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} th{background:#f1f5f9;}</style>');
+      printWindow.document.write('</head><body><h2>Check-In & Check-Out Activity Log</h2>');
+      printWindow.document.write(document.getElementById('printableTransactionTable').outerHTML);
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    }
+
+    function connectSyncKeyDirect() {
+      const input = document.getElementById('syncKeyInput').value.trim();
+      if (!input) return showPopupModal("Input Error", "Enter a valid Sync Key!", null);
+      connectSyncKey(input);
+    }
+
+    function connectSyncKey(targetKey) {
+      syncKey = targetKey.toUpperCase();
+      localStorage.setItem('edico_sync_key', syncKey);
+
+      if (!connectedSyncList.includes(syncKey)) {
+        connectedSyncList.push(syncKey);
+      }
+      saveLocalStorage();
+
+      if (db) {
+        bindDatabaseListeners();
+      }
+      showPopupModal("Pairing Successful", `Connected to Sync Key: ${syncKey}`, null);
+    }
+
+    function disconnectSyncKey() {
+      syncKey = 'OFFLINE-LOCAL';
+      localStorage.setItem('edico_sync_key', syncKey);
+      if (activeRootRef) activeRootRef.off();
+
+      document.getElementById('cloudStatusDot').classList.add('offline');
+      document.getElementById('cloudStatusText').innerText = "Local Mode";
+      updateSyncKeyDisplay();
+      showPopupModal("Disconnected", "System running in local offline mode.", null);
+    }
+
+    function renderConnectedSyncList() {
+      const tbody = document.getElementById('connectedSyncTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      connectedSyncList.forEach(k => {
+        const tr = document.createElement('tr');
+        const isActive = k === syncKey;
+        tr.innerHTML = `
+          <td><strong>${k}</strong></td>
+          <td>${isActive ? '<span style="color:var(--success); font-weight:bold;">Active</span>' : '<span style="color:var(--text-muted);">Saved</span>'}</td>
+          <td>
+            ${!isActive ? `<button class="btn btn-accent btn-sm" onclick="promptAdminAuth('connectSync', '${k}')">Connect</button>` : ''}
+            <button class="btn btn-outline btn-sm" style="color:var(--danger);" onclick="promptAdminAuth('removeSyncKey', '${k}')"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function removeSyncKey(keyToRemove) {
+      connectedSyncList = connectedSyncList.filter(k => k !== keyToRemove);
+      if (syncKey === keyToRemove) {
+        disconnectSyncKey();
+      } else {
+        saveLocalStorage();
+        renderConnectedSyncList();
+      }
+    }
+
+    function updateAdminPassword() {
+      const currPass = document.getElementById('currAdminPass').value;
+      const newPass = document.getElementById('newAdminPass').value.trim();
+      const newSecret = document.getElementById('newRecoverySecret').value.trim();
+
+      if (currPass !== adminPassword) {
+        return showPopupModal("Security Error", "Current Admin Password is incorrect!", null);
+      }
+
+      if (newPass.length < 4) {
+        return showPopupModal("Validation Error", "New Admin Password must be at least 4 characters long.", null);
+      }
+
+      adminPassword = newPass;
+      localStorage.setItem('edico_admin_pass', adminPassword);
+
+      if (newSecret !== "") {
+        recoverySecret = newSecret;
+        localStorage.setItem('edico_recovery_secret', recoverySecret);
+      }
+
+      document.getElementById('currAdminPass').value = '';
+      document.getElementById('newAdminPass').value = '';
+      document.getElementById('newRecoverySecret').value = '';
+      document.getElementById('displayDefaultPassword').innerText = adminPassword;
+
+      addNotification("Admin Password and/or Recovery Secret updated successfully.");
+      showPopupModal("Security Updated", "Admin Password and Recovery Secret updated successfully!", null);
+    }
+
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+      const activeTab = document.getElementById(tabId);
+      if (activeTab) activeTab.classList.add('active');
+      if (btn) btn.classList.add('active');
+    }
+
+    function closeModal(modalId) {
+      const el = document.getElementById(modalId);
+      if (el) el.classList.remove('active');
+    }
+
+    function togglePinVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      const icon = btn.querySelector('i');
+      if (!input) return;
+
+      if (input.type === 'password') {
+        input.type = 'text';
+        if (icon) icon.className = 'fa-solid fa-eye-slash';
+      } else {
+        input.type = 'password';
+        if (icon) icon.className = 'fa-solid fa-eye';
+      }
+    }
+
+    function loadSettings() {
+      document.getElementById('settingHouseName').value = houseName;
+      document.getElementById('settingCurrency').value = currentCurrency;
+      document.getElementById('gateBrandTitle').innerText = houseName;
+      document.getElementById('appTitle').innerText = houseName;
+      document.getElementById('displayDefaultPassword').innerText = adminPassword;
+      document.getElementById('settingBackupSchedule').value = backupSchedule;
+
+      document.querySelectorAll('.currSymbol').forEach(el => el.innerText = currentCurrency);
+
+      const logoImg = document.getElementById('appLogo');
+      if (logoData && logoImg) {
+        logoImg.src = logoData;
+        logoImg.style.display = 'block';
+      } else if (logoImg) {
+        logoImg.style.display = 'none';
+      }
+
+      updateBackupScheduleStatusText();
+    }
+
+    function saveBrandingSettings() {
+      const newName = document.getElementById('settingHouseName').value.trim();
+      const newCurr = document.getElementById('settingCurrency').value;
+
+      if (newName) {
+        houseName = newName;
+        localStorage.setItem('edico_house_name', houseName);
+      }
+
+      currentCurrency = newCurr;
+      localStorage.setItem('edico_currency', currentCurrency);
+
+      loadSettings();
+      renderRooms();
+      updateStats();
+      renderTransactions();
+
+      showPopupModal("Branding Saved", "Guest house branding settings updated successfully.", null);
+    }
+
+    function handleLogoUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        logoData = event.target.result;
+        localStorage.setItem('edico_app_logo', logoData);
+        loadSettings();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeLogo() {
+      logoData = '';
+      localStorage.removeItem('edico_app_logo');
+      loadSettings();
+      showPopupModal("Logo Removed", "Guest House logo was removed.", null);
+    }
+  </script>
+</body>
+</html>
