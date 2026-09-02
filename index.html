@@ -1118,9 +1118,9 @@
 
     let db = null;
     let activeRootRef = null;
-    let syncKey = localStorage.getItem('edico_sync_key') || 'EDICO-DEMO-2026';
+    let syncKey = localStorage.getItem('edico_sync_key') || '***';
     let adminPassword = localStorage.getItem('edico_admin_pass') || 'admin123';
-    let recoverySecret = localStorage.getItem('edico_recovery_secret') || 'admin123';
+    let recoverySecret = localStorage.getItem('edico_recovery_secret') || 'admin2026';
     let currentCurrency = localStorage.getItem('edico_currency') || 'GH₵';
     let houseName = localStorage.getItem('edico_house_name') || 'Edico Guest House';
     let logoData = localStorage.getItem('edico_app_logo') || '';
@@ -1137,18 +1137,18 @@
     // Seed Data
     const seedRooms = {
       "room_101": { id: "room_101", number: 101, name: "Standard Room 101", price: 100, status: "available", amenities: ["AC", "Bathroom", "Wi-Fi"] },
-      "room_102": { id: "room_102", number: 102, name: "Standard Room 102", price: 120, status: "available", amenities: ["AC", "Bathroom", "Wi-Fi", "TV"] },
-      "room_103": { id: "room_103", number: 103, name: "Deluxe Suite 103", price: 180, status: "available", amenities: ["AC", "Bathroom", "TV", "Wi-Fi", "Fridge"] },
-      "room_104": { id: "room_104", number: 104, name: "Executive Suite 104", price: 250, status: "available", amenities: ["AC", "Bathroom", "TV", "Wi-Fi", "Jacuzzi"] },
-      "room_105": { id: "room_105", number: 105, name: "Presidential Penthouse 105", price: 400, status: "available", amenities: ["AC", "Bathroom", "TV", "Wi-Fi", "Fridge", "Jacuzzi"] }
+   //   "room_102": { id: "room_102", number: 102, name: "Standard Room 102", price: 120, status: "available", amenities: ["AC", "Bathroom", "Wi-Fi", "TV"] },
+    //  "room_103": { id: "room_103", number: 103, name: "Deluxe Suite 103", price: 180, status: "available", amenities: ["AC", "Bathroom", "TV", "Wi-Fi", "Fridge"] },
+   //   "room_104": { id: "room_104", number: 104, name: "Executive Suite 104", price: 250, status: "available", amenities: ["AC", "Bathroom", "TV", "Wi-Fi", "Jacuzzi"] },
+    //  "room_105": { id: "room_105", number: 105, name: "Presidential Penthouse 105", price: 400, status: "available", amenities: ["AC", "Bathroom", "TV", "Wi-Fi", "Fridge", "Jacuzzi"] }
     };
 
     const seedStaff = {
       "s1": { id: "s1", name: "John Doe", role: "Front Desk Manager", phone: "0241234567", pin: "1234" },
-      "s2": { id: "s2", name: "Mary Mensah", role: "Receptionist", phone: "0209876543", pin: "2345" },
-      "s3": { id: "s3", name: "Samuel Osei", role: "Shift Supervisor", phone: "0551122334", pin: "3456" },
-      "s4": { id: "s4", name: "Abena Appiah", role: "Evening Clerk", phone: "0275566778", pin: "4567" },
-      "s5": { id: "s5", name: "Kwame Nkrumah", role: "Night Shift Operations", phone: "0509988776", pin: "5678" }
+     // "s2": { id: "s2", name: "Mary Mensah", role: "Receptionist", phone: "0209876543", pin: "2345" },
+     // "s3": { id: "s3", name: "Samuel Osei", role: "Shift Supervisor", phone: "0551122334", pin: "3456" },
+     // "s4": { id: "s4", name: "Abena Appiah", role: "Evening Clerk", phone: "0275566778", pin: "4567" },
+     // "s5": { id: "s5", name: "Kwame Nkrumah", role: "Night Shift Operations", phone: "0509988776", pin: "5678" }
     };
 
     // State Holders
